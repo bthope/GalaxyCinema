@@ -10,10 +10,14 @@
   },
   "dependencies": {
     "galaxybooking-web": "file:",
+    "moment": "^2.30.1",
     "next": "14.2.5",
+    "next-auth": "^4.24.7",
     "react": "^18",
     "react-dom": "^18",
-    "react-icons": "^5.3.0"
+    "react-icons": "^5.3.0",
+    "react-router-dom": "^6.26.1",
+    "react-swipeable": "^7.0.1"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
