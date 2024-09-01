@@ -3,11 +3,21 @@ import { useRouter } from "next/router";
 import React, { useState } from "react";
 import { FaSearch, FaChevronDown, FaTimes, FaEye, FaEyeSlash } from "react-icons/fa";
 
+<<<<<<< HEAD
 export default function Header() {
+=======
+
+export default function Header() {
+
+>>>>>>> bb70e62283651a2e9363871978cd24f0ba3f9183
   const [showSearch, setShowSearch] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> bb70e62283651a2e9363871978cd24f0ba3f9183
   const handleSearchClick = () => {
     setShowSearch(!showSearch);
   };
