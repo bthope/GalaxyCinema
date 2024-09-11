@@ -1,2 +1,0 @@
-# GalaxyCinema
-Đồ án
