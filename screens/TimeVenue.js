@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -21,9 +21,12 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import { provinces } from "../data/provinces";
 import HorizontalDatepicker from "@awrminkhodaei/react-native-horizontal-datepicker";
 import malls from "../data/malls";
+import axios from "axios"; // Import axios here
 
 export default function TimeVenue({ route, navigation }) {
   const { movie } = route.params;
+  console.log("Movie received:", movie);
+
   const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: "showtimes", title: "Lịch chiếu" },
@@ -42,7 +45,39 @@ export default function TimeVenue({ route, navigation }) {
   const [selectedDate, setSelectedDate] = useState(new Date("2024-08-15"));
 
   const [seatData, setSeatData] = useState([]);
-  
+  const [movieDetails, setMovieDetails] = useState({
+    actors: [],
+    directors: [],
+    producers: [],
+  });
+
+  // Function to format date to "ngày/tháng/năm"
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0"); // Months are zero-based
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch movie details
+  useEffect(() => {
+    const fetchMovieDetails = async () => {
+      try {
+        const response = await axios.get(
+          `http://192.168.1.8:8080/api/v1/movies/${movie.slug}`
+        );
+        if (response.data.code === 200) {
+          setMovieDetails(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching movie details:", error);
+      }
+    };
+
+    fetchMovieDetails();
+  }, [movie.slug]);
+  console.log("Movie details:", movieDetails);
 
   const handleDateChange = (date) => {
     console.log("Date received:", date);
@@ -120,15 +155,14 @@ export default function TimeVenue({ route, navigation }) {
       )}
       renderItem={({ item }) => (
         <View style={{ margin: 10 }}>
-          <Pressable 
+          <Pressable
             onPress={() => {
-             setMall(item.name);
-             setSeatData(item.tableData)
-              
+              setMall(item.name);
+              setSeatData(item.tableData);
             }}
-           style={{margin: 10}}
-           key={index}
-            >
+            style={{ margin: 10 }}
+            key={index}
+          >
             <Text style={{ fontSize: 16, fontWeight: "500" }}>{item.name}</Text>
           </Pressable>
           {mall.includes(item.name) && (
@@ -177,64 +211,69 @@ export default function TimeVenue({ route, navigation }) {
     />
   );
 
-  const Infomation = () => (
-    <View style={styles.tabContent}>
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        <View style={styles.contentInfomation}>
-          <Text style={styles.contentthreeInformation}>Nội dung</Text>
-          <Text style={{ color: "gray", marginTop: 10, lineHeight: 20 }}>
-            Phim kể về một chàng trai trẻ tuổi, tài năng và nhiệt huyết, đang cố
-            gắng tìm kiếm mục tiêu sống của mình. Anh đã phải đối mặt với nhiều
-            khó khăn, thử thách và cả những người bạn không đáng tin cậy. Liệu
-            anh có thể vượt qua tất cả để đạt được ước mơ của mình?
-          </Text>
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>Xem tiếp</Text>
-          </TouchableOpacity>
-        </View>
+  const Infomation = ({ movie }) => {
+    console.log("Infomation movie:", movie);
 
-        <View style={styles.contentInfomation}>
-          <Text style={styles.contentthreeInformation}>Diễn viên</Text>
-          <View style={styles.actorList}>
-            <View style={styles.actorItem}>
-              <Image
-                source={require("../img/user.png")}
-                style={styles.contentThreeImage}
-              />
-              <Text style={styles.contentThreeTextAcction}>Lee Chae Kyung</Text>
-            </View>
-            <View style={styles.actorItem}>
-              <Image
-                source={require("../img/user.png")}
-                style={styles.contentThreeImage}
-              />
-              <Text style={styles.contentThreeTextAcction}>Kim Do Yoon</Text>
-            </View>
-            <View style={styles.actorItem}>
-              <Image
-                source={require("../img/user.png")}
-                style={styles.contentThreeImage}
-              />
-              <Text style={styles.contentThreeTextAcction}>Kim Hye Na</Text>
+    return (
+      <View style={styles.tabContent}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          <View style={styles.contentInfomation}>
+            <Text style={styles.contentthreeInformation}>Nội dung</Text>
+            <Text style={{ color: "gray", marginTop: 10, lineHeight: 20 }}>
+              Phim kể về một chàng trai trẻ tuổi, tài năng và nhiệt huyết, đang
+              cố gắng tìm kiếm mục tiêu sống của mình. Anh đã phải đối mặt với
+              nhiều khó khăn, thử thách và cả những người bạn không đáng tin
+              cậy. Liệu anh có thể vượt qua tất cả để đạt được ước mơ của mình?
+            </Text>
+            <TouchableOpacity style={styles.button}>
+              <Text style={styles.buttonText}>Xem tiếp</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.contentInfomation}>
+            <Text style={styles.contentthreeInformation}>Diễn viên</Text>
+            <View style={styles.actorList}>
+              {movie.actors && movie.actors.length > 0 ? (
+                movie.actors.map((actor) => (
+                  <View key={actor.id} style={styles.actorItem}>
+                    <Image
+                      source={require("../img/user.png")} // Đặt ảnh mặc định cho diễn viên
+                      style={styles.contentThreeImage}
+                    />
+                    <Text style={styles.contentThreeTextAcction}>
+                      {actor.name}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{ color: "gray" }}>Không có diễn viên</Text>
+              )}
             </View>
           </View>
-        </View>
-
-        <View style={styles.contentInfomation}>
-          <Text style={styles.contentthreeInformation}>Đạo diễn</Text>
-          <View style={styles.actorList}>
-            <View style={styles.actorItem}>
-              <Image
-                source={require("../img/user.png")}
-                style={styles.contentThreeImage}
-              />
-              <Text style={styles.contentThreeTextAcction}>Lee Chae Kyung</Text>
+          <View style={styles.contentInfomation}>
+            <Text style={styles.contentthreeInformation}>Đạo diễn</Text>
+            <View style={styles.actorList}>
+              {movie.producers && movie.producers.length > 0 ? (
+                movie.producers.map((producers) => (
+                  <View key={producers.id} style={styles.actorItem}>
+                    <Image
+                      source={require("../img/user.png")} // Đặt ảnh mặc định cho diễn viên
+                      style={styles.contentThreeImage}
+                    />
+                    <Text style={styles.contentThreeTextAcction}>
+                      {producers.name}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{ color: "gray" }}>Không có đạo diễn</Text>
+              )}
             </View>
           </View>
-        </View>
-      </ScrollView>
-    </View>
-  );
+        </ScrollView>
+      </View>
+    );
+  };
 
   const New = () => (
     <View style={styles.tabContent}>
@@ -245,7 +284,7 @@ export default function TimeVenue({ route, navigation }) {
 
   const renderScene = SceneMap({
     showtimes: Showtimes,
-    infomation: Infomation,
+    infomation: () => <Infomation movie={movieDetails} />,
     new: New,
   });
 
@@ -279,7 +318,10 @@ export default function TimeVenue({ route, navigation }) {
       <StatusBar />
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={styles.header}>
-          <Image source={movie.image} style={styles.movieImage} />
+          <Image
+            source={{ uri: movie.imagePortrait }}
+            style={styles.movieImage}
+          />
           <TouchableOpacity
             onPress={() => navigation.navigate("MainTabs")}
             style={styles.backLeft}
@@ -290,7 +332,10 @@ export default function TimeVenue({ route, navigation }) {
             source={require("../img/play.png")}
             style={styles.contentcenterImage}
           />
-          <Image source={movie.image} style={styles.movieImageAvata} />
+          <Image
+            source={{ uri: movie.imagePortrait }}
+            style={styles.movieImageAvata}
+          />
           <Text style={styles.movieTitle}>{movie.title}</Text>
 
           <View style={{ flexDirection: "row" }}>
@@ -299,7 +344,7 @@ export default function TimeVenue({ route, navigation }) {
                 source={require("../img/star.png")}
                 style={styles.starImage}
               />
-              <Text style={styles.starText}>9.8</Text>
+              <Text style={styles.starText}>{movie.rating}</Text>
             </View>
             <View style={styles.contentStartow}>
               <Image
@@ -312,9 +357,7 @@ export default function TimeVenue({ route, navigation }) {
 
           <View style={{ flexDirection: "row" }}>
             <View style={styles.contentStar1}>
-              <TouchableOpacity
-                style={styles.contentButtom}
-              >
+              <TouchableOpacity style={styles.contentButtom}>
                 <Text
                   style={{
                     color: "white",
@@ -323,7 +366,7 @@ export default function TimeVenue({ route, navigation }) {
                     fontSize: 12,
                   }}
                 >
-                  T13
+                  {movie.age}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -332,14 +375,16 @@ export default function TimeVenue({ route, navigation }) {
                 source={require("../img/time.png")}
                 style={styles.starImage1}
               />
-              <Text style={styles.starText1}>111 phút</Text>
+              <Text style={styles.starText1}>{movie.duration} phút</Text>
             </View>
             <View style={styles.contentTimeDate}>
               <Image
                 source={require("../img/date.png")}
                 style={styles.starImage1}
               />
-              <Text style={styles.starText1}>20/02/2024</Text>
+              <Text style={styles.starText1}>
+                {formatDate(movie.releaseDate)}
+              </Text>
             </View>
           </View>
         </View>
@@ -459,7 +504,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     position: "absolute",
     top: 110,
-    right: 200,
+    right: 180,
     resizeMode: "cover",
   },
   contentStar: {
