@@ -47,13 +47,14 @@ export default function Account({ navigation }) {
   // Function to handle logout
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('userInfo'); // Remove user data from AsyncStorage
-      setUserData(null); // Clear user data from state
-      setIsLoggedIn(false); // Set login status to false
+      await AsyncStorage.removeItem('userInfo'); // Xóa dữ liệu người dùng khỏi AsyncStorage
+      setUserData(null); // Xóa dữ liệu người dùng trong state
+      setIsLoggedIn(false); // Cập nhật trạng thái đăng nhập thành false
     } catch (error) {
       console.log('Failed to log out:', error);
     }
   };
+  
 
 
   return (
@@ -186,7 +187,7 @@ export default function Account({ navigation }) {
       {/* Logout Option */}
       {isLoggedIn && (
         <View style={styles.contentfooterLogout}>
-          <TouchableOpacity onPress={() => setIsLoggedIn(false)}>
+          <TouchableOpacity onPress={handleLogout}>
             <Text style={styles.contentfooterTextLogout}>Đăng xuất</Text>
           </TouchableOpacity>
         </View>
