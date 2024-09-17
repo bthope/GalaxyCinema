@@ -15,7 +15,8 @@ import { StatusBar } from "expo-status-bar";
 import Icon from "react-native-vector-icons/FontAwesome";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RadioGroup from "react-native-radio-buttons-group";
-import { API_Register } from "../api/Api";
+import { API_CheckOTPEmail, API_Register } from "../api/Api";
+import Modal from 'react-native-modal';
 
 export default function Register({ navigation }) {
   const [name, setName] = useState('');
@@ -28,6 +29,9 @@ export default function Register({ navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   
   const [errors, setErrors] = useState({});
+
+  const [isModalVisible, setModalVisible] = useState(false); // Hiển thị modal OTP
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']); // Lưu OTP nhập từ người dùng
 
   const onChangeDate = (event, selectedDate) => {
     const currentDate = selectedDate || date;
@@ -120,8 +124,7 @@ export default function Register({ navigation }) {
       });
 
       if (response.ok) {
-        Alert.alert("Đăng ký thành công!", "Chuyển đến trang đăng nhập.");
-        navigation.navigate("Login");
+        setModalVisible(true); // Hiển thị modal OTP sau khi đăng ký thành công
       } else {
         const errorData = await response.json();
         Alert.alert("Đăng ký thất bại", errorData.message || "Đã có lỗi xảy ra.");
@@ -130,6 +133,41 @@ export default function Register({ navigation }) {
       Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
     }
   };
+
+  const handleOTPChange = (value, index) => {
+    let newOtpCode = [...otpCode];
+    newOtpCode[index] = value;
+    setOtpCode(newOtpCode);
+  };
+  const validateOTP = async () => {
+    const otp = otpCode.join('');
+    if (otp.length !== 6) {
+      Alert.alert('Lỗi', 'Mã OTP phải đủ 6 ký tự.');
+      return;
+    }
+
+    try {
+      const response = await fetch(API_CheckOTPEmail, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ otp, email }),
+      });
+
+      if (response.ok) {
+        Alert.alert("Xác thực OTP thành công!", "Chuyển đến trang đăng nhập.");
+        setModalVisible(false); // Ẩn modal OTP
+        navigation.navigate('Login');
+      } else {
+        const errorData = await response.json();
+        Alert.alert("Xác thực OTP thất bại", errorData.message || "OTP không chính xác.");
+      }
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể xác thực OTP.");
+    }
+  };
+
 
   return (
     <KeyboardAvoidingView
@@ -283,6 +321,28 @@ export default function Register({ navigation }) {
           <Text style={styles.buttonText}>Hoàn tất</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal OTP */}
+      <Modal isVisible={isModalVisible}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Nhập mã OTP</Text>
+          <View style={styles.otpContainer}>
+            {otpCode.map((digit, index) => (
+              <TextInput
+                key={index}
+                style={styles.otpInput}
+                maxLength={1}
+                keyboardType="numeric"
+                value={digit}
+                onChangeText={(value) => handleOTPChange(value, index)}
+              />
+            ))}
+          </View>
+          <TouchableOpacity style={styles.button} onPress={validateOTP}>
+            <Text style={styles.buttonText}>Xác thực OTP</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
       <View style={styles.signupContainer}>
           <Text style={styles.signupText}>Tài khoản đã được đăng ký ! </Text>
           <TouchableOpacity
@@ -456,4 +516,30 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     width: 380,
   },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 5,
+    width: 40,
+    height: 40,
+    textAlign: 'center',
+    fontSize: 18,
+    marginRight: 10,
+  },
+
 });

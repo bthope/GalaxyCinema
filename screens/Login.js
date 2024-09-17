@@ -7,29 +7,33 @@ import {
   StyleSheet,
   Image,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 import { API_Login } from "../api/Api";
+import { StatusBar } from "expo-status-bar";
+import { AntDesign } from "@expo/vector-icons";
 
 export default function Login({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
 
   const validateField = (fieldName, value) => {
-    let error = '';
+    let error = "";
 
     switch (fieldName) {
-      case 'email':
+      case "email":
         if (!value.trim()) {
           error = "Vui lòng nhập email.";
         } else if (!value.includes("@")) {
           error = "Email phải có dạng hợp lệ.";
         }
         break;
-      case 'password':
+      case "password":
         if (!value.trim()) {
           error = "Vui lòng nhập mật khẩu.";
         }
@@ -46,8 +50,8 @@ export default function Login({ navigation }) {
 
   const handleLogin = async () => {
     // Validate fields
-    validateField('email', email);
-    validateField('password', password);
+    validateField("email", email);
+    validateField("password", password);
 
     if (Object.values(errors).some((error) => error)) {
       Alert.alert("Lỗi", "Vui lòng kiểm tra lại các trường.");
@@ -69,16 +73,18 @@ export default function Login({ navigation }) {
         const { data } = result;
 
         // Lưu thông tin đăng nhập vào AsyncStorage
-        await AsyncStorage.setItem('userInfo', JSON.stringify(data));
+        await AsyncStorage.setItem("userInfo", JSON.stringify(data));
 
         console.log("Đăng nhập thành công!", data);
-        
 
         Alert.alert("Đăng nhập thành công!", "Chuyển đến trang Account.");
         navigation.navigate("MainTabs");
       } else {
         const errorData = await response.json();
-        Alert.alert("Đăng nhập thất bại", errorData.message || "Đã có lỗi xảy ra.");
+        Alert.alert(
+          "Đăng nhập thất bại",
+          errorData.message || "Đã có lỗi xảy ra."
+        );
       }
     } catch (error) {
       Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
@@ -86,13 +92,18 @@ export default function Login({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../img/close.png")}
-        style={styles.closes}
-        resizeMode="contain"
-        onStartShouldSetResponder={() => navigation.navigate('MainTabs')}
-      />
+    <KeyboardAvoidingView
+      contentContainerStyle={styles.contain}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.contain}
+    >
+      <StatusBar />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate("MainTabs")}>
+          <AntDesign name="close" size={24} color="black" />
+        </TouchableOpacity>
+      </View>
+
       <Image
         source={require("../img/LoginLogo.png")}
         style={styles.logo}
@@ -107,15 +118,19 @@ export default function Login({ navigation }) {
           value={email}
           onChangeText={(text) => {
             setEmail(text);
-            setErrors((prev) => ({ ...prev, email: '' })); // Clear error on change
+            setErrors((prev) => ({ ...prev, email: "" })); // Clear error on change
           }}
-          onBlur={() => validateField('email', email)}
+          onBlur={() => validateField("email", email)}
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
       </View>
       <View style={{ flex: 0.1 }}></View>
       <View style={styles.inputContainer}>
-        <Icon name="lock" size={27} style={{ position: "absolute", left: 10, top: 8, color: "grey" }} />
+        <Icon
+          name="lock"
+          size={27}
+          style={{ position: "absolute", left: 10, top: 8, color: "grey" }}
+        />
         <TextInput
           style={[styles.input, errors.password && styles.inputError]}
           placeholder="Nhập mật khẩu"
@@ -123,15 +138,19 @@ export default function Login({ navigation }) {
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            setErrors((prev) => ({ ...prev, password: '' })); // Clear error on change
+            setErrors((prev) => ({ ...prev, password: "" })); // Clear error on change
           }}
           secureTextEntry
-          onBlur={() => validateField('password', password)}
+          onBlur={() => validateField("password", password)}
         />
-        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+        {errors.password && (
+          <Text style={styles.errorText}>{errors.password}</Text>
+        )}
       </View>
 
-      <TouchableOpacity style={styles.forgotPass}>
+      <TouchableOpacity style={styles.forgotPass}
+        onPress={() => navigation.navigate("ForgetPassword")}
+      >
         <Text style={styles.forgotPasswordText}>Quên mật khẩu ?</Text>
       </TouchableOpacity>
 
@@ -142,30 +161,35 @@ export default function Login({ navigation }) {
         <Text style={styles.signupText}>Không có tài khoản!</Text>
         <TouchableOpacity
           style={styles.signupButton}
-          onPress={() => navigation.navigate('Register')}
+          onPress={() => navigation.navigate("Register")}
         >
           <Text style={styles.signupButtonText}>Đăng ký</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
+  contain: {
+    flex: 1.2,
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#ffffff",
+    paddingTop: 40,
+    backgroundColor: "white",
   },
-  closes:{
-    top: "-6%",
-    left: "-45%",
+  header: {
+    backgroundColor: "white",
+
+    alignSelf: "flex-start",
+    justifyContent: "flex-start",
+    width: "100%",
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  closes: {
     color: "#0000AA",
     width: "100%",
-    height: "2.3%",
+    height: "5%",
   },
   logo: {
     width: "100%",
@@ -178,15 +202,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
     borderBlockColor: "grey",
-
   },
-  
+
   icon: {
     position: "absolute",
     left: 10,
     top: 12,
     color: "grey",
-    
   },
   input: {
     width: 380,
@@ -198,7 +220,6 @@ const styles = StyleSheet.create({
     color: "grey",
     borderBottomWidth: 1,
     padding: 10,
-    
   },
   inputError: {
     borderColor: "red",
@@ -208,10 +229,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
     alignSelf: "flex-start",
     width: 380,
-    
   },
   button: {
-    width: "100%",
+    width: "90%",
     top: "3%",
     height: 40,
     justifyContent: "center",
@@ -233,6 +253,7 @@ const styles = StyleSheet.create({
     color: "#000088",
     fontWeight: "bold",
     fontSize: 14,
+    right: "5%",
   },
   forgotPass: {
     alignSelf: "flex-end",
@@ -240,7 +261,7 @@ const styles = StyleSheet.create({
   signupContainer: {
     flexDirection: "row",
     marginTop: 80,
-    top: "28%",
+    top: "40%",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -259,6 +280,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     paddingVertical: 5,
     paddingHorizontal: 17,
+
   },
   signupButtonText: {
     fontSize: 14,

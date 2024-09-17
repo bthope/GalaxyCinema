@@ -18,7 +18,9 @@ import TimeVenue from '../screens/TimeVenue';
 import Theatre from '../screens/Theatre';
 import SelectCombo from '../screens/SelectCombo';
 import PayMent from '../screens/PayMent';
-import AccountLogin from '../screens/AccountLogin';
+import InformationPersonal from '../screens/InformationPersonal';
+import EditPassWord from '../screens/EditPassWord';
+import ForgetPassword from '../screens/ForgetPassword';
 
 // Tab Navigator
 const homePage = "Trang chủ";
@@ -101,7 +103,7 @@ function MainTabs() {
       <Tab.Screen name={cinematography} component={Cinematography} options={{ headerShown: false }} />
       <Tab.Screen
         name={account}
-        component={isLoggedIn ? Account : AccountLogin}
+        component={Account}
         options={{ headerShown: false }}
       />
     </Tab.Navigator>
@@ -116,7 +118,6 @@ export default function MainContainer() {
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="Setting" component={Setting} />
         <Stack.Screen name="Account" component={Account} />
-        <Stack.Screen name="AccountLogin" component={AccountLogin} />
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Register" component={Register} />
         <Stack.Screen name="TimeVenue" component={TimeVenue} />
@@ -124,6 +125,9 @@ export default function MainContainer() {
         <Stack.Screen name="Theatre" component={Theatre} />
         <Stack.Screen name="SelectCombo" component={SelectCombo} />
         <Stack.Screen name="PayMent" component={PayMent} />
+        <Stack.Screen name="InformationPersonal" component={InformationPersonal} />
+        <Stack.Screen name="EditPassWord" component={EditPassWord} />
+        <Stack.Screen name="ForgetPassword" component={ForgetPassword} />
       </Stack.Navigator>
     </NavigationContainer>
   );
