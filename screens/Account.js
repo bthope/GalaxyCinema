@@ -1,9 +1,10 @@
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Platform, KeyboardAvoidingView, Image } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View, TouchableOpacity, Platform, KeyboardAvoidingView, Image } from 'react-native';
 import React, { useEffect, useState, useCallback } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_logout } from '../api/Api';
 
 export default function Account({ navigation }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false); // State to check login status
@@ -26,6 +27,9 @@ export default function Account({ navigation }) {
         setLoading(false); // Set loading to false after fetching data
       }
     };
+
+    console.log("Logout", userData);
+    
   
     // Automatically load data when the screen is focused or re-focused
     useFocusEffect(
@@ -45,13 +49,36 @@ export default function Account({ navigation }) {
     }
 
   // Function to handle logout
-  const handleLogout = async () => {
+   // Function to handle logout
+   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('userInfo'); // Xóa dữ liệu người dùng khỏi AsyncStorage
-      setUserData(null); // Xóa dữ liệu người dùng trong state
-      setIsLoggedIn(false); // Cập nhật trạng thái đăng nhập thành false
+      if (userData && userData.accessToken) {
+        // Call the API to log out
+        const response = await fetch(API_logout, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${userData.accessToken}` // Add token to header
+          }
+        });
+
+        if (response.ok) {
+          // API call was successful, proceed with local logout
+          await AsyncStorage.removeItem('userInfo'); // Xóa dữ liệu người dùng khỏi AsyncStorage
+          setUserData(null); // Xóa dữ liệu người dùng trong state
+          setIsLoggedIn(false); // Cập nhật trạng thái đăng nhập thành false
+          Alert.alert("Đăng xuất thành công", "Bạn đã được đăng xuất khỏi tài khoản.");
+        } else {
+          // Handle API error response
+          const errorData = await response.json();
+          Alert.alert("Lỗi đăng xuất", errorData.message || "Đã có lỗi xảy ra.");
+        }
+      } else {
+        Alert.alert("Lỗi", "Không tìm thấy token đăng nhập.");
+      }
     } catch (error) {
       console.log('Failed to log out:', error);
+      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
     }
   };
   
@@ -95,8 +122,13 @@ export default function Account({ navigation }) {
           </View>
           <View style={styles.contentinforuser}>
             <View style={styles.contentTT}>
-              <Image source={require('../img/pencil.png')} style={styles.imgUser} />
-              <Text style={{ color: 'black', textAlign: 'center', marginTop: 5, width: 100 }}>Thông tin</Text>
+              <TouchableOpacity style={styles.contentInformation} 
+                onPress={() => navigation.navigate('InformationPersonal')}
+              >
+                <Image source={require('../img/pencil.png')} style={styles.imgUser} />
+                <Text style={{ color: 'black', textAlign: 'center', marginTop: 5, width: 100 }}>Thông tin</Text>
+              </TouchableOpacity>
+              
             </View>
             <View style={styles.contentTT2}>
               <Image source={require('../img/undo.png')} style={styles.imgUser} />
@@ -405,6 +437,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 18,
   },
+  contentInformation:{
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 100,
+    height: 100,
+  },
+  
 });
-
-

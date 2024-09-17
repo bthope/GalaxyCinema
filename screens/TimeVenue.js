@@ -22,6 +22,7 @@ import { provinces } from "../data/provinces";
 import HorizontalDatepicker from "@awrminkhodaei/react-native-horizontal-datepicker";
 import malls from "../data/malls";
 import axios from "axios"; // Import axios here
+import { API_GetMovieSlug } from "../api/Api";
 
 export default function TimeVenue({ route, navigation }) {
   const { movie } = route.params;
@@ -65,7 +66,8 @@ export default function TimeVenue({ route, navigation }) {
     const fetchMovieDetails = async () => {
       try {
         const response = await axios.get(
-          `http://192.168.1.8:8080/api/v1/movies/${movie.slug}`
+          // `http://192.168.1.155:8080/api/v1/movies/${movie.slug}`
+          API_GetMovieSlug + movie.slug
         );
         if (response.data.code === 200) {
           setMovieDetails(response.data.data);

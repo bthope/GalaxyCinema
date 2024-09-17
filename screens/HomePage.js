@@ -14,6 +14,7 @@ import { images } from "../data/imageData"; // Adjust the path as needed
 // import { moviesData } from '../data/movies';
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import { imageDataFooter } from "../data/imageDataFooter";
+import { API_GetMovies } from "../api/Api";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = width * 0.75;
@@ -25,7 +26,9 @@ const MovieItem = ({ item, navigation }) => (
     onPress={() => navigation.navigate("TimeVenue", { movie: item })}
   >
     <View style={styles.movieItemContainer}>
-      <Image source={{ uri: item.imagePortrait }} style={styles.movieImage} />
+      <View style={styles.ImageHinder}>
+        <Image source={{ uri: item.imagePortrait }} style={styles.movieImage} />
+      </View>
       <Text style={styles.movieTitle}>{item.title}</Text>
       <View style={styles.movieStarAge}>
         <View style={styles.ratingContainer}>
@@ -86,7 +89,7 @@ export default function HomePage({ navigation }) {
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const response = await fetch("http://192.168.1.8:8080/api/v1/movies");
+        const response = await fetch(API_GetMovies);
         const result = await response.json();
 
         // Kiểm tra cấu trúc dữ liệu trả về
@@ -385,6 +388,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 250,
     borderRadius: 5,
+    resizeMode: "cover",
+    overflow: "hidden",
   },
   movieTitle: {
     marginTop: 10,
@@ -446,4 +451,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
+
+  // các hình bằng nhau:
+  ImageHinder:{
+    resizeMode: 'cover',
+    height: 250,
+    width: '100%',
+    borderRadius: 5
+  }
 });
