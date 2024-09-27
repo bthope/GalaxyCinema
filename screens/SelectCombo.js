@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -12,12 +12,29 @@ import {
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { comboData } from "../data/combo";
+import axios from "axios";
 import { useRoute } from "@react-navigation/native";
 
 export default function SelectCombo({ navigation }) {
   const route = useRoute();
+  const [combos, setCombos] = useState([]); // State to store fetched combos
   const [selectedCombos, setSelectedCombos] = useState({});
+
+  useEffect(() => {
+    // Fetch combo data from the API
+    const fetchCombos = async () => {
+      try {
+        const response = await axios.get(
+          "http://192.168.1.7:8080/api/v1/products"
+        );
+        setCombos(response.data.data); // Assuming response.data.data contains the combo array
+      } catch (error) {
+        console.error("Error fetching combo data: ", error);
+      }
+    };
+
+    fetchCombos();
+  }, []);
 
   const increaseQuantity = (id) => {
     setSelectedCombos((prevSelectedCombos) => ({
@@ -43,7 +60,7 @@ export default function SelectCombo({ navigation }) {
 
   const calculateTotal = () => {
     return Object.keys(selectedCombos).reduce((total, id) => {
-      const combo = comboData.find((item) => item.id.toString() === id);
+      const combo = combos.find((item) => item.id.toString() === id);
       return total + combo.price * selectedCombos[id];
     }, 0);
   };
@@ -65,61 +82,113 @@ export default function SelectCombo({ navigation }) {
       </View>
       <View>
         <FlatList
-          data={comboData}
+          data={combos}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.commentItem}>
-              <Image source={item.image} style={styles.commentImage} />
-              <View style={styles.commentTextContainer}>
-                <Text style={styles.commentTitle}>{item.title}</Text>
-                <Text style={styles.readMore}>{item.content}</Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={styles.priceFastlist}>Giá: {item.price}đ</Text>
+          renderItem={({ item }) => {
+            // Safeguard: Check if item exists and has an image property
+            if (!item || !item.image) {
+              return (
+                <View style={styles.commentItem}>
+                  <Text style={styles.commentTitle}>Image not available</Text>
+                </View>
+              );
+            }
 
-                  <View style={styles.quantityContainer}>
-                    <TouchableOpacity onPress={() => decreaseQuantity(item.id)}>
-                      <Text style={styles.quantityButton}>–</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.quantityText}>
-                      {selectedCombos[item.id] || 0}
+            return (
+              <View style={styles.commentItem}>
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.commentImage}
+                />
+                <View style={styles.commentTextContainer}>
+                  <Text style={styles.commentTitle}>{item.name}</Text>
+                  <Text style={styles.readMore}>{item.description}</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={styles.priceFastlist}>
+                      Giá: {item.price.toLocaleString("vi-VN")}đ
                     </Text>
-                    <TouchableOpacity onPress={() => increaseQuantity(item.id)}>
-                      <Text style={styles.quantityButton}>+</Text>
-                    </TouchableOpacity>
+
+                    <View style={styles.quantityContainer}>
+                      <TouchableOpacity
+                        onPress={() => decreaseQuantity(item.id)}
+                      >
+                        <Text style={styles.quantityButton}>–</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.quantityText}>
+                        {selectedCombos[item.id] || 0}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => increaseQuantity(item.id)}
+                      >
+                        <Text style={styles.quantityButton}>+</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          )}
+            );
+          }}
         />
+
         <View style={styles.footer}>
           <View>
-            <Text style={styles.seatText}>{`${route.params.seats.length}x ghế ${route.params.seats.join(
-              ", "
-            )}`}</Text>
-            <Text style={styles.toltalText}>Tổng cộng: {totalWithCombos.toLocaleString("vi-VN")}đ</Text>
+            <Text style={styles.seatText}>{`${
+              route.params.seats.length
+            }x ghế ${route.params.seats.join(", ")}`}</Text>
+            <Text style={styles.toltalText}>
+              Tổng cộng: {totalWithCombos.toLocaleString("vi-VN")}
+            </Text>
           </View>
           <TouchableOpacity
             onPress={() =>
               navigation.navigate("PayMent", {
-
-                seats: route.params.seats,
+              //   seats: getSelectedSeatsInfo(),
+              // total: calculateTotal(),
+              // name: route.params.movieTitle,
+              // mall: route.params.cinemaName,
+              // timeSelected: formattedStartTime,
+              // tableSeats: route.params.roomName,
+              // // Rạp phim
+              // movie: route.params.movie,
+              // // Hiển thị ghế đã chọn 
+              // getSelectedSeats: getSelectedSeatsInfo().join(', '),
+              // // thêm hình ảnh phim movieImage
+              // movieImage: route.params.movieImage,
+              // // startTime
+              // startTime: formattedStartTime,
+              // Lấy các thông tin này
+               seats: route.params.seats,
                 total: totalWithCombos,
                 name: route.params.name,
                 mall: route.params.mall,
                 timeSelected: route.params.timeSelected,
                 tableSeats: route.params.tableSeats,
                 movie: route.params.movie,
+                getSelectedSeats: route.params.getSelectedSeats,
+                movieImage: route.params.movieImage,
+                startTime: route.params.startTime,
+                // Thêm thông tin combo
+                selectedCombos: selectedCombos,
+                //age
+                age: route.params.age,
+                cinemaName: route.params.cinemaName,
+                // selectedDate
                 selectedDate: route.params.selectedDate,
+                // selectedDate: selectedDate,
+                selectedDate: route.params.selectedDate,
+               
+
               })
             }
-           style={styles.button}>
+           
+            style={styles.button}
+          >
             <Text style={styles.buttonText}>Tiếp tục</Text>
           </TouchableOpacity>
         </View>
@@ -190,10 +259,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 5,
-    left: 120,
+    left: 90,
     backgroundColor: "white",
-    borderWidth: 0.2,
-    borderColor: "gray",
   },
   quantityButton: {
     fontSize: 20,
@@ -217,7 +284,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     height: 120,
     justifyContent: "space-between",
-    
   },
   button: {
     justifyContent: "center",
@@ -232,13 +298,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-    seatText: {
-        fontSize: 16,
-    },
-    toltalText: {
-        fontSize: 16,
-        fontWeight: "bold",
-        marginTop: 5,
-        color: "#FFA500",
-    },
+  seatText: {
+    fontSize: 16,
+  },
+  toltalText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 5,
+    color: "#FFA500",
+  },
 });

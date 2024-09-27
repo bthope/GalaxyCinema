@@ -28,7 +28,7 @@ export default function Account({ navigation }) {
       }
     };
 
-    console.log("Logout", userData);
+    console.log("User", userData);
     
   
     // Automatically load data when the screen is focused or re-focused
@@ -48,7 +48,18 @@ export default function Account({ navigation }) {
       );
     }
 
-  // Function to handle logout
+    // Function to remove user data from AsyncStorage
+const removeUserData = async () => {
+  try {
+    await AsyncStorage.removeItem('userInfo'); // Remove user data from AsyncStorage
+    setUserData(null); // Clear user data state
+    setIsLoggedIn(false); // Update login status to false
+    console.log('User data removed successfully');
+  } catch (error) {
+    console.log('Failed to remove user data:', error);
+  }
+};
+
    // Function to handle logout
    const handleLogout = async () => {
     try {
@@ -64,7 +75,7 @@ export default function Account({ navigation }) {
 
         if (response.ok) {
           // API call was successful, proceed with local logout
-          await AsyncStorage.removeItem('userInfo'); // Xóa dữ liệu người dùng khỏi AsyncStorage
+          await removeUserData();// Xóa dữ liệu người dùng khỏi AsyncStorage
           setUserData(null); // Xóa dữ liệu người dùng trong state
           setIsLoggedIn(false); // Cập nhật trạng thái đăng nhập thành false
           Alert.alert("Đăng xuất thành công", "Bạn đã được đăng xuất khỏi tài khoản.");
@@ -81,6 +92,7 @@ export default function Account({ navigation }) {
       Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
     }
   };
+
   
 
 
