@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,214 +7,223 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  FlatList,
   Pressable,
+  ScrollView,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { FontAwesome } from "@expo/vector-icons";
+import axios from "axios";
+import { API_GetRoomLayout } from "../api/Api";
 
 export default function Theatre({ navigation }) {
   const route = useRoute();
-
-  // Tạo trạng thái `seats` tại đây
   const [seats, setSeats] = useState([]);
-  const pricePerSeat = 40000; // 40 nghìn VND mỗi ghế
-
   const selectedDate = new Date(route.params.selectedDate);
+  const formattedStartTime = route.params.startTime.substring(0, 5);
+  const formattedEndTime = route.params.endTime.substring(0, 5);
+  const roomId = route.params.room;
+  const [roomLayout, setRoomLayout] = useState(null);
+  const showtimeId = route.params.showtimeId;
+  const [seatPrices, setSeatPrices] = useState({ NORMAL: 0, COUPLE: 0 });
 
+ // Calculate total based on seat type prices
+ const calculateTotal = () => {
+  let total = 0;
 
-  const onSeatSelect = (item) => {
-    const seatSelected = seats.find((seat) => seat === item);
-    if (seatSelected) {
-      setSeats(seats.filter((seat) => seat !== item));
-    } else {
-      setSeats([...seats, item]);
+  // Loop through each selected seat
+  seats.forEach((seatId) => {
+    const seat = findSeatById(seatId); // Find the seat object by its ID
+    if (seat) {
+      total += seat.price; // Use the price property from the seat data
+      if (seat.type === "COUPLE") {
+        // If it's a couple seat, also add the price of the paired seat
+        const pairSeat = seat.groupSeats.find(groupSeat =>
+          roomLayout.rows[seat.rowIndex]?.seats.find(s => s.columnIndex === groupSeat.columnIndex)
+        );
+        if (pairSeat) {
+          const pairedSeat = findSeatById(pairSeat.columnIndex); // Assuming columnIndex gives us the paired seat ID
+          if (pairedSeat) {
+            total += pairedSeat.price; // Add the paired seat's price
+          }
+        }
+      }
     }
+  });
+
+  return total; // Return the calculated total
+};
+
+  const findSeatById = (seatId) => {
+    for (const row of roomLayout.rows) {
+      const seat = row.seats.find((s) => s.id === seatId);
+      if (seat) {
+        return seat;
+      }
+    }
+    return null;
   };
 
-  const showSeats = () => {
+  useEffect(() => {
+    if (roomId) {
+      const fetchRoomLayout = async () => {
+        try {
+          const response = await axios.get(
+            API_GetRoomLayout + showtimeId + "/seat-layout"
+          );
+          console.log("Room Layout Data:", response.data);
+          setRoomLayout(response.data.data);
+
+          // Update seat prices
+          const { NORMAL, COUPLE } = response.data.data.prices;
+          setSeatPrices({ NORMAL, COUPLE });
+        } catch (error) {
+          console.log("Fetch room error: ", error);
+        }
+      };
+      fetchRoomLayout();
+    }
+  }, [roomId]);
+
+  const renderSeats = () => {
+    if (!roomLayout || !Array.isArray(roomLayout.rows)) {
+      return null;
+    }
+
     return (
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        {seats.map((seat, index) => (
-          <Text
-            key={index}
-            style={{ marginTop: 4, fontSize: 17, paddingHorizontal: 4 }}
-          >
-            {seat}
-          </Text>
+      <View style={styles.seatContainer}>
+        {roomLayout.rows.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.rowContainer}>
+            <View style={styles.rowLabelContainer}>
+              <Text style={styles.rowLabel}>{row.name}</Text>
+            </View>
+            <View style={styles.seatRow}>
+              {row.seats.map((seat, seatIndex) => (
+                <View
+                  key={seatIndex}
+                  style={[
+                    styles.seatWrapper,
+                    seat.type === "COUPLE" && styles.coupleSeatWrapper,
+                  ]}
+                >
+                  <Pressable
+                    style={[
+                      styles.seat,
+                      seat.isBooked
+                        ? styles.bookedSeat
+                        : seats.includes(seat.id)
+                        ? styles.selectedSeat
+                        : styles.availableSeat,
+                      seat.type === "COUPLE" && styles.coupleSeat,
+                      seats.includes(seat.id) && styles.selectedSeat,
+                    ]}
+                    onPress={() => {
+                      if (!seat.isBooked) {
+                        // Toggle seat selection
+                        setSeats((prevSeats) => {
+                          if (prevSeats.includes(seat.id)) {
+                            return prevSeats.filter((id) => id !== seat.id);
+                          }
+                          return [...prevSeats, seat.id];
+                        });
+                      }
+                    }}
+                  >
+                    <Text style={styles.seatText}>{seat.name}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+            <View style={styles.rowLabelContainer}>
+              <Text style={styles.rowLabel}>{row.name}</Text>
+            </View>
+          </View>
         ))}
       </View>
     );
   };
-
-  const calculateTotal = () => {
-    return seats.length * pricePerSeat;
+  const getSelectedSeatsInfo = () => {
+    if (!roomLayout || !Array.isArray(roomLayout.rows)) {
+      return [];
+    }
+  
+    return seats
+      .map((seatId) => {
+        const seat = findSeatById(seatId);
+        if (seat) {
+          // Get the corresponding row using rowIndex
+          const row = roomLayout.rows[seat.rowIndex]; // Assuming seat.rowIndex points to the correct row
+          console.log("Row: ", row);
+          
+          if (row) {
+            return `${row.name}${seat.name}`; // Concatenate row name and seat name (e.g., "D8")
+          }
+        }
+        return null;
+      })
+      .filter(Boolean); // Filter out null values if any seatId is not found
   };
+  
+  // Example log
+  console.log("Selected seats: ", getSelectedSeatsInfo());
+  
+  
 
   return (
     <KeyboardAvoidingView
-      contentContainerStyle={styles.contain}
+      contentContainerStyle={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.contain}
+      style={styles.container}
     >
       <StatusBar />
-      <SafeAreaView>
-        <View
-          style={{
-            alignItems: "flex-start",
-            justifyContent: "flex-start",
-            marginLeft: 10,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <AntDesign name="arrowleft" size={28} color="black" />
-            </TouchableOpacity>
-
-            <View style={{ marginLeft: 9 }}>
-              <Text style={{ fontSize: 18, fontWeight: "600" }}>
-                {route.params.name}
-              </Text>
-              <Text style={{ fontSize: 15, marginTop: 2, color: "gray" }}>
-                {route.params.mall}
-              </Text>
-            </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <AntDesign name="arrowleft" size={28} color="black" />
+          </TouchableOpacity>
+          <View style={styles.movieInfo}>
+            <Text style={styles.movieTitle}>{route.params.movieTitle}</Text>
+            <Text style={styles.cinemaName}>{route.params.cinemaName}</Text>
           </View>
         </View>
-        <Text
-          style={{
-            textAlign: "center",
-            fontSize: 15,
-            fontWeight: "bold",
-            marginTop: 10,
-            justifyContent: "center",
-          }}
-        >
-          {route.params.timeSelected}
-        </Text>
-        <Text
-          style={{
-            textAlign: "center",
-            fontSize: 12,
-            fontWeight: "bold",
-            marginTop: 10,
-            justifyContent: "center",
-            color: "gray",
-          }}
-        >
-          CLASSIC (240)
-        </Text>
+        <Text style={styles.roomName}>{route.params.roomName}</Text>
+        <Text style={styles.startTime}>{formattedStartTime}</Text>
 
-        <View style={{ marginTop: 20 }} />
-        <FlatList
-          numColumns={7}
-          data={route.params.tableSeats}
-          style={{ marginLeft: 8 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => onSeatSelect(item)}
-              style={{
-                margin: 10,
-                borderColor: "gray",
-                borderWidth: 0.5,
-                borderRadius: 5,
-                flex: 0.2,
-              }}
-            >
-              {seats.includes(item) ? (
-                <Text
-                  style={{
-                    backgroundColor: "#ffc40c",
-                    padding: 8,
-                    flex: 1,
-                    borderRadius: 5,
-                  }}
-                >
-                  {item}
-                </Text>
-              ) : (
-                <Text style={{ padding: 8, flex: 1 }}>{item}</Text>
-              )}
-            </Pressable>
-          )}
-        />
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingLeft: 90,
-            top: -60,
-            backgroundColor: "#D8D8D8",
-            padding: 10,
-            marginLeft: 4,
-            width: 410,
-          }}
-        >
-          <View>
-            <FontAwesome
-              style={{ textAlign: "center", marginBottom: 4 }}
-              name="square"
-              size={24}
-              color="#ffc40c"
-            />
+        {/* Scrollable area for seats */}
+        <ScrollView contentContainerStyle={styles.seatLayoutContainer}>
+          {renderSeats()}
+        </ScrollView>
+
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <FontAwesome name="square" size={24} color="#ffc40c" />
             <Text>Đang chọn</Text>
           </View>
-          <View style={{ marginHorizontal: 20 }}>
-            <FontAwesome
-              style={{ textAlign: "center", marginBottom: 4 }}
-              name="square"
-              size={24}
-              color="white"
-            />
-            <Text style={{ width: 80 }}>Ghế trống</Text>
+          <View style={styles.legendItem}>
+            <FontAwesome name="square" size={24} color="white" />
+            <Text style={{ fontWeight: "bold" }}>Ghế trống</Text>
           </View>
-          <View>
-            <FontAwesome
-              style={{ textAlign: "center", marginBottom: 4 }}
-              name="square"
-              size={24}
-              color="#989898"
-            />
+          <View style={styles.legendItem}>
+            <FontAwesome name="square" size={24} color="#989898" />
             <Text>Đã bán</Text>
           </View>
         </View>
-        <View
-          style={{
-            padding: 10,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View>
-            <Text
-              style={{
-                marginBottom: 4,
-                fontSize: 15,
-                fontWeight: "500",
-              }}
-            >
-              Show end time approx 6:51 pm
+
+        {/* Footer */}
+        <View style={styles.totalContainer}>
+          <View style={styles.totalContainerLeft}>
+            <Text style={styles.endTime}>
+              Thời gian kết thúc: {formattedEndTime}
             </Text>
-            {seats.length > 0 ? (
-              showSeats()
-            ) : (
-              <Text style={{ fontSize: 18, width: 170 }}>No seat selected</Text>
-            )}
+            <Text style={styles.seatCount}>
+              Ghế: {getSelectedSeatsInfo().join(", ")}
+            </Text>
           </View>
-          <View
-            style={{
-              backgroundColor: "#E0E0E0",
-              padding: 6,
-              borderTopLeftRadius: 6,
-              borderBottomEndRadius: 6,
-              right: -4,
-            }}
-          >
-            <Text style={{ width: 110 }}>
-              Tổng cộng: {calculateTotal().toLocaleString("vi-VN")} VND
+          <View style={styles.totalAmount}>
+            <Text>
+              Tổng cộng:{" "}
+              {calculateTotal().toLocaleString("vi-VN")} VND
             </Text>
           </View>
         </View>
@@ -222,14 +231,20 @@ export default function Theatre({ navigation }) {
         <TouchableOpacity
           onPress={() =>
             navigation.navigate("SelectCombo", {
-              seats: seats,
+              seats: getSelectedSeatsInfo(),
               total: calculateTotal(),
-              name: route.params.name,
-              mall: route.params.mall,
-              timeSelected: route.params.timeSelected,
-              tableSeats: route.params.tableSeats,
+              name: route.params.movieTitle,
+              mall: route.params.cinemaName,
+              timeSelected: formattedStartTime,
+              tableSeats: route.params.roomName,
               movie: route.params.movie,
+              getSelectedSeats: getSelectedSeatsInfo().join(", "),
+              movieImage: route.params.movieImage,
+              startTime: formattedStartTime,
+              age: route.params.age,
               selectedDate: route.params.selectedDate,
+              //showtimeId
+              showtimeId: route.params.showtimeId,
             })
           }
           style={styles.button}
@@ -242,28 +257,168 @@ export default function Theatre({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  contain: {
-    flex: 1.2,
-    alignItems: "flex-start",
+  container: {
+    flex: 1,
     backgroundColor: "white",
     paddingTop: 38,
   },
+  safeArea: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
   button: {
     width: "100%",
-    top: "-1%",
-    height: 40,
+    height: 50,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 5,
     marginTop: 20,
     backgroundColor: "#FFA500",
-    width: 400,
-    left: 10,
-    height: 50,
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  movieTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  cinemaName: {
+    fontSize: 15,
+    marginTop: 2,
+    color: "gray",
+    fontWeight: "500",
+  },
+  movieInfo: {
+    marginLeft: 9,
+  },
+  movieTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  cinemaName: {
+    fontSize: 15,
+    marginTop: 2,
+    color: "gray",
+    fontWeight: "500",
+  },
+  roomName: {
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginTop: 10,
+  },
+  seatContainer: {
+    marginVertical: 20,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  startTime: {
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "bold",
+    marginTop: 10,
+    color: "gray",
+  },
+
+  rowContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 5,
+    width: "100%",
+  },
+  rowLabelContainer: {
+    maxWidth: "25%",
+    alignItems: "center",
+    width: "10%",
+  },
+  seatRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    flexGrow: 1,
+    maxWidth: "75%",
+  },
+  rowLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  seat: {
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: "#999999",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 4,
+  },
+  availableSeat: {
+    backgroundColor: "white",
+  },
+  bookedSeat: {
+    backgroundColor: "#989898",
+  },
+  selectedSeat: {
+    backgroundColor: "#FFC40C",
+  },
+  seatText: {
+    fontSize: 9,
+    fontWeight: "bold",
+  },
+  coupleSeat: {
+    width: 42,
+    backgroundColor: "white",
+  },
+  coupleSeatWrapper: {
+    flexDirection: "row",
+  },
+  totalContainer: {
+    flexDirection: "row",
+    paddingTop: 10,
+    paddingLeft: 4,
+    width: 410,
+    paddingBottom: 20,
+
+  },
+  totalContainerLeft: {
+    width: 200,
+    height: 50,
+  },
+  endTime: {
+    paddingLeft: 25,
+  },
+
+  legend: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 80,
+    backgroundColor: "#D8D8D8",
+    padding: 10,
+    marginLeft: 4,
+    width: 410,
+  },
+  legendItem: {
+    alignItems: "center",
+    marginHorizontal: 10,
+  },
+  totalAmount: {
+    paddingLeft: 25,
+    paddingTop: 10,
+    backgroundColor: "#E0E0E0",
+    padding: 6,
+    borderTopLeftRadius: 6,
+    borderBottomEndRadius: 6,
+    right: -60,
+    width: 150,
+  },
+  seatCount: {
+    paddingLeft: 25,
+    paddingTop: 10,
   },
 });

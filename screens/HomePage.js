@@ -37,7 +37,7 @@ const MovieItem = ({ item, navigation }) => (
         </View>
         <View style={styles.buttonContainerAge}>
           <TouchableOpacity style={styles.buttonTextAge}>
-            <Text style={styles.movieAge}>{item.age}</Text>
+            <Text style={styles.movieAge}>T{item.age}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -382,13 +382,19 @@ const styles = StyleSheet.create({
   },
   movieItemContainer: {
     width: ITEM_WIDTH_CONTENT,
-    padding: 12,
+    padding: 10,
   },
   movieImage: {
+    width: "100%", // Full width of the container
+    height: "100%", // Fill the height of the container
+    borderRadius: 5, // Rounded corners
+    resizeMode: "cover", // Cover ensures the image fills the space
+  },
+  // các hình bằng nhau:
+  ImageHinder: {
     width: "100%",
-    height: 250,
+    height: 250, // Fixed height for the container
     borderRadius: 5,
-    resizeMode: "cover",
     overflow: "hidden",
   },
   movieTitle: {
@@ -451,12 +457,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
-
-  // các hình bằng nhau:
-  ImageHinder:{
-    resizeMode: 'cover',
-    height: 250,
-    width: '100%',
-    borderRadius: 5
-  }
 });

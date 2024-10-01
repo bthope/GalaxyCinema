@@ -18,11 +18,10 @@ import { AntDesign } from "@expo/vector-icons";
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import Icon1 from "react-native-vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { provinces } from "../data/provinces";
 import HorizontalDatepicker from "@awrminkhodaei/react-native-horizontal-datepicker";
-import malls from "../data/malls";
 import axios from "axios"; // Import axios here
-import { API_GetMovieSlug } from "../api/Api";
+import { API_GetMovieSlug, API_GetCinema, API_GetShowtime } from "../api/Api";
+import YoutubePlayer from "react-native-youtube-iframe";
 
 export default function TimeVenue({ route, navigation }) {
   const { movie } = route.params;
@@ -35,22 +34,41 @@ export default function TimeVenue({ route, navigation }) {
     { key: "new", title: "Tin tức" },
   ]);
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedProvince, setSelectedProvince] = useState("Toàn quốc");
-  const [selectedProvinceIndex, setSelectedProvinceIndex] = useState(null);
-  const [filteredCinemas, setFilteredCinemas] = useState([]); // Khởi tạo danh sách rạp phim
+  const [selectedCity, setSelectedCity] = useState(null); // Lưu thành phố đã chọn
+  const [selectedAddress, setSelectedAddress] = useState(null); // Lưu địa chỉ đã chọn
+  const [filteredAddresses, setFilteredAddresses] = useState([]); // Lưu địa chỉ theo thành phố
+  const [modalVisible, setModalVisible] = useState(false); // Hiển thị modal chọn thành phố
+  const [modalAddressVisible, setModalAddressVisible] = useState(false); // Hiển thị modal chọn địa chỉ
 
-  const [mall, setMall] = useState([]);
-  const mallsData = malls;
-  const [showtimes, setShowtimes] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(new Date("2024-08-15"));
-
-  const [seatData, setSeatData] = useState([]);
   const [movieDetails, setMovieDetails] = useState({
     actors: [],
     directors: [],
     producers: [],
   });
+
+  const [modalVisibleTrailer, setModalVisibleTrailer] = useState(false);
+  const [cinemas, setCinemas] = useState([]);
+  const [selectedProvinceIndex, setSelectedProvinceIndex] = useState(null); // Khai báo state cho chỉ mục địa chỉ đã chọn
+  const [selectedDate, setSelectedDate] = useState(new Date()); // Khai báo state cho ngày đã chọn
+  const [showtimes, setShowtimes] = useState([]); // Khai báo state cho lịch chiếu
+  // Function to format date in Vietnamese
+  const formatDateInVietnamese = (date) => {
+    return date.toLocaleDateString("vi-VN", {
+      weekday: "long", // Hiển thị thứ
+      day: "numeric", // Hiển thị ngày
+      month: "numeric", // Hiển thị tháng
+    });
+  };
+  // Function to handle date change
+  const handleDateChange = (date) => {
+    setSelectedDate(date); // Cập nhật ngày đã chọn
+    console.log(formatDateInVietnamese(date)); // Log ngày tháng tiếng Việt để kiểm tra
+  };
+
+  // Tính toán endDate là một tuần sau ngày hiện tại
+  const currentDate = new Date();
+  const oneWeekLater = new Date(currentDate);
+  oneWeekLater.setDate(currentDate.getDate() + 7);
 
   // Function to format date to "ngày/tháng/năm"
   const formatDate = (dateString) => {
@@ -79,34 +97,174 @@ export default function TimeVenue({ route, navigation }) {
 
     fetchMovieDetails();
   }, [movie.slug]);
-  console.log("Movie details:", movieDetails);
 
-  const handleDateChange = (date) => {
-    console.log("Date received:", date);
-    setSelectedDate(new Date(date)); // Đảm bảo date là đối tượng Date hợp lệ
+  // Lấy ra dữ liệu trailer từ API trong movieDetails
+  const trailer = movieDetails.trailer;
+  // Lấy ra ID video YouTube từ URL trailer
+  const trailerId = trailer ? trailer.split("v=")[1]?.split("&")[0] : null;
+
+  // Hiển thị modal trailer
+  const handleOpenTrailer = () => {
+    if (trailer) {
+      setModalVisibleTrailer(true);
+    } else {
+      alert("Phim này không có trailer");
+    }
   };
 
-  const handleSelectProvince = (index) => {
-    setSelectedProvince(provinces[index]);
-    setSelectedProvinceIndex(index);
+  // Đóng modal trailer
+  const handleCloseTrailer = () => {
+    setModalVisibleTrailer(false);
   };
 
+  // Fetch API cinemas
+  useEffect(() => {
+    const fetchCinemas = async () => {
+      try {
+        const response = await axios.get(API_GetCinema);
+        if (response.data.code === 200) {
+          setCinemas(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching cinemas:", error);
+      }
+    };
+    fetchCinemas();
+  }, []);
+
+  // Hiển thị cinema với dữ liệu là city.name
+  const city = cinemas.map((cinema) => cinema.city.name);
+  console.log("Thành phố:", city);
+
+  // Hiển thị cinema với dữ liệu là address có tên name
+  const address = cinemas.map((cinema) => cinema.name);
+  console.log("Địa chỉ:", address);
+
+  // Lấy danh sách các thành phố duy nhất
+  const uniqueCities = [...new Set(cinemas.map((cinema) => cinema.city.name))];
+  console.log("Unique Cities:", uniqueCities);
+
+  // Xử lý chọn tỉnh thành phố và hiển thị trên modal city
+  const handleSelectCity = (index) => {
+    const cityName = uniqueCities[index]; // Lấy tên thành phố duy nhất
+    setSelectedCity(cityName); // Cập nhật thành phố đã chọn
+
+    // Lọc địa chỉ thuộc thành phố đã chọn
+    const addressesForCity = cinemas.filter(
+      (cinema) => cinema.city.name === cityName
+    );
+    setFilteredAddresses(addressesForCity); // Cập nhật địa chỉ tương ứng
+    // setModalVisible(false); // Đóng modal thành phố
+  };
+
+  // Hiển thị movieId của movieDetails
+  console.log("Movie ID:", movieDetails.id);
+  // Hiển thị id theo name của rạp phim
+  const cinemaIdflim = cinemas.find(
+    (cinema) => cinema.name === selectedAddress
+  )?.id;
+  console.log("Cinema ID:", cinemaIdflim);
+
+  // Hiển thị ngày đã chọn selectedDate định dạng theo "năm-tháng-ngày"
+  const selectedDateFormatted = selectedDate.toISOString().split("T")[0];
+  console.log("Selected Date:", selectedDateFormatted);
+
+  // Fetch API showtimes
+  useEffect(() => {
+    const fetchShowtimes = async () => {
+      // Kiểm tra sự tồn tại của movieId và cinemaId trước khi gọi API
+      if (movieDetails?.id) {
+        const movieId = movieDetails.id;
+        const date = selectedDateFormatted;
+        const cinemaId = cinemaIdflim;
+
+        try {
+          let response;
+          if (date && cinemaId) {
+            // Gọi API khi có đủ movieId, date và cinemaId
+            response = await axios.get(
+              // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
+              API_GetShowtime + `?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
+            );
+          } else {
+            // Gọi API chỉ với movieId nếu thiếu date hoặc cinemaId
+            response = await axios.get(
+              // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}`
+              API_GetShowtime + `?movieId=${movieId}`
+            );
+          }
+
+          // Kiểm tra dữ liệu trả về
+          if (response.data.data) {
+            setShowtimes(response.data.data); // Lưu dữ liệu showtimes
+          } else {
+            console.warn("Không có dữ liệu showtimes");
+            setShowtimes([]); // Xóa dữ liệu showtimes cũ nếu không có kết quả
+          }
+        } catch (error) {
+          console.error("Error fetching showtimes:", error);
+        }
+      }
+    };
+
+    fetchShowtimes(); // Gọi hàm fetchShowtimes khi các dependency thay đổi
+  }, [movieDetails, selectedDateFormatted, cinemaIdflim]); // Thêm các dependency để theo dõi
+
+  // Hiển thị showtimes
+  console.log("Showtimes:", showtimes);
+
+  
   const handleConfirm = () => {
-    // Lọc danh sách rạp phim dựa trên khu vực đã chọn
-    const filtered = cinemas.filter((cinema) => {
-      // Bạn có thể thêm logic để xác định khu vực cho các rạp phim
-      return (
-        selectedProvince === "Toàn quốc" ||
-        cinema.address.includes(selectedProvince)
-      );
-    });
-    setFilteredCinemas(filtered); // Cập nhật danh sách rạp phim đã lọc
-    setModalVisible(false);
+    if (selectedAddress) {
+      // Thực hiện các thao tác với địa chỉ đã chọn
+      setModalAddressVisible(false); // Đóng modal sau khi xác nhận
+    } else {
+      alert("Vui lòng chọn địa chỉ trước.");
+    }
+  };
+
+  const handleConfirmCity = () => {
+    if (selectedCity) {
+      // Thực hiện các thao tác với thành phố đã chọn
+      setModalVisible(false); // Đóng modal sau khi xác nhận
+    }
+  };
+
+  const groupedShowtimes = showtimes.reduce((acc, showtime) => {
+    const cinemaName = showtime.cinemaName;
+    const roomName = showtime.room.name; // Lấy tên phòng chiếu
+
+    // Nếu rạp chưa có, khởi tạo
+    if (!acc[cinemaName]) {
+      acc[cinemaName] = {};
+    }
+
+    // Nếu phòng chiếu chưa có, khởi tạo
+    if (!acc[cinemaName][roomName]) {
+      acc[cinemaName][roomName] = [];
+    }
+
+    // Thêm giờ chiếu vào phòng chiếu tương ứng
+    acc[cinemaName][roomName].push(showtime);
+
+    return acc;
+  }, {});
+
+  // State để lưu phòng đang được chọn
+  const [selectedCinema, setSelectedCinema] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // Hàm chia nhỏ mảng thành các nhóm (6 phần tử mỗi nhóm)
+  const chunkArray = (array, chunkSize) => {
+    const result = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      result.push(array.slice(i, i + chunkSize));
+    }
+    return result;
   };
 
   const Showtimes = () => (
     <FlatList
-      data={mallsData}
       keyExtractor={(item) => item.name}
       ListHeaderComponent={() => (
         <View>
@@ -115,7 +273,9 @@ export default function TimeVenue({ route, navigation }) {
               style={styles.buttonNation}
               onPress={() => setModalVisible(true)}
             >
-              <Text style={styles.buttonTextNation}>{selectedProvince}</Text>
+              <Text style={styles.buttonTextNation}>
+                {selectedCity ? selectedCity : "Thành phố"}
+              </Text>
               <Icon1
                 name="caretdown"
                 size={12}
@@ -124,8 +284,19 @@ export default function TimeVenue({ route, navigation }) {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.buttonNation}>
-              <Text style={styles.buttonTextNation}>Tất cả rạp</Text>
+            <TouchableOpacity
+              style={styles.buttonNation}
+              onPress={() => {
+                if (selectedCity) {
+                  setModalAddressVisible(true); // Mở modal địa chỉ nếu đã chọn thành phố
+                } else {
+                  alert("Vui lòng chọn thành phố trước."); // Cảnh báo nếu chưa chọn thành phố
+                }
+              }}
+            >
+              <Text style={styles.buttonTextNation}>
+                {selectedAddress ? selectedAddress : "Rạp phim"}
+              </Text>
               <Icon1
                 name="caretdown"
                 size={12}
@@ -135,10 +306,11 @@ export default function TimeVenue({ route, navigation }) {
             </TouchableOpacity>
           </View>
           <View style={{ margin: 8 }}></View>
+
           <HorizontalDatepicker
             mode="gregorian"
-            startDate={new Date("2024-08-10")}
-            endDate={new Date("2024-08-17")}
+            startDate={currentDate} // Ngày bắt đầu là ngày hiện tại
+            endDate={oneWeekLater} // Ngày kết thúc là một tuần sau
             initialSelectedDate={selectedDate} // Sử dụng selectedDate làm initialSelectedDate
             onSelectedDateChange={handleDateChange}
             selectedItemWidth={170}
@@ -153,61 +325,99 @@ export default function TimeVenue({ route, navigation }) {
             selectedDate={selectedDate}
             scrollEnabled={true}
           />
-        </View>
-      )}
-      renderItem={({ item }) => (
-        <View style={{ margin: 10 }}>
-          <Pressable
-            onPress={() => {
-              setMall(item.name);
-              setSeatData(item.tableData);
-            }}
-            style={{ margin: 10 }}
-            key={index}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "500" }}>{item.name}</Text>
-          </Pressable>
-          {mall.includes(item.name) && (
-            <FlatList
-              numColumns={3}
-              data={item.showtimes}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <Pressable
+
+          {/* Hiển thị danh sách các rạp */}
+
+          {Object.keys(groupedShowtimes).map((cinemaName) => (
+            <View key={cinemaName} style={styles.cinemaRowContainer}>
+              {/* Bên trái: Hiển thị tên rạp */}
+              <View style={styles.cinemaNameContainer}>
+                <TouchableOpacity
                   onPress={() =>
-                    navigation.navigate("Theatre", {
-                      mall: mall,
-                      name: route.params.movie.title,
-                      timeSelected: item,
-                      tableSeats: seatData,
-                      movie: route.params.movie,
-                      selectedDate: selectedDate.toISOString(),
-                    })
-                  }
-                  style={{
-                    borderColor: "green",
-                    padding: 10,
-                    borderWidth: 0.5,
-                    width: 90,
-                    borderRadius: 3,
-                    margin: 10,
-                    padding: 5,
-                  }}
+                    setSelectedCinema(
+                      selectedCinema === cinemaName ? null : cinemaName
+                    )
+                  } // Nhấn vào để chọn hoặc bỏ chọn rạp
+                  style={styles.cinemaButton}
                 >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: "green",
-                      fontWeight: "500",
-                      textAlign: "center",
-                    }}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
+                  <Text style={styles.cinemaText}>{cinemaName}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Bên phải: Hiển thị danh sách phòng chiếu và giờ chiếu khi nhấn vào rạp */}
+              {selectedCinema === cinemaName && (
+                <View style={styles.showtimeContainer}>
+                  {Object.keys(groupedShowtimes[cinemaName]).map((roomName) => (
+                    <View key={roomName} style={styles.roomContainer}>
+                      {/* Hiển thị tên phòng chiếu */}
+                      <TouchableOpacity
+                        onPress={() =>
+                          setSelectedRoom(
+                            selectedRoom === roomName ? null : roomName
+                          )
+                        } // Nhấn vào để chọn hoặc bỏ chọn phòng
+                        style={styles.roomButton}
+                      >
+                        <Text style={styles.roomText}>{roomName}</Text>
+                      </TouchableOpacity>
+
+                      {/* Hiển thị danh sách giờ chiếu khi nhấn vào phòng */}
+                      {selectedRoom === roomName && (
+                        <FlatList
+                          data={chunkArray(
+                            groupedShowtimes[cinemaName][roomName],
+                            6
+                          )} // Chia thành nhóm 6 giờ chiếu
+                          keyExtractor={(item, index) =>
+                            `${cinemaName}-${roomName}-${index}`
+                          }
+                          renderItem={({ item }) => (
+                            <View style={styles.rowContainer}>
+                              {item.map((showtime) => (
+                                <TouchableOpacity
+                                  key={showtime.id}
+                                  style={styles.showtimeButton}
+                                  onPress={() =>
+                                    navigation.navigate("Theatre", {
+                                      showtimeId: showtime.id,                                   
+                                      movieTitle: movie.title,
+                                      cinemaName: cinemaName,
+                                      // Tên phòng chiếu
+                                      roomName: roomName,
+                                      room: showtime.room.id,
+                                      // Thêm giờ chiếu đã chọn vào props chỉ hiển 
+                                      startTime: showtime.startTime,
+                                      // THêm endTime
+                                      endTime: showtime.endTime,
+                                      // Thêm hình ảnh phim
+                                      movieImage: movie.imagePortrait,
+                                      // Hiển thị age
+                                      age: movie.age,
+                                      //   selectedDateFormatted
+                                      selectedDate: selectedDateFormatted,
+                                   
+                                                      
+                                    })
+                                  }
+                                  
+                                >
+                                  {/* Hiển thị giờ chiếu */}
+                                  <Text style={styles.showtimeText}>
+                                    {showtime.startTime.substring(0, 5)}{" "}
+                                    {/* Giờ và phút */}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                        />
+                      )}
+                    </View>
+                  ))}
+                </View>
               )}
-            />
-          )}
+            </View>
+          ))}
         </View>
       )}
     />
@@ -222,10 +432,7 @@ export default function TimeVenue({ route, navigation }) {
           <View style={styles.contentInfomation}>
             <Text style={styles.contentthreeInformation}>Nội dung</Text>
             <Text style={{ color: "gray", marginTop: 10, lineHeight: 20 }}>
-              Phim kể về một chàng trai trẻ tuổi, tài năng và nhiệt huyết, đang
-              cố gắng tìm kiếm mục tiêu sống của mình. Anh đã phải đối mặt với
-              nhiều khó khăn, thử thách và cả những người bạn không đáng tin
-              cậy. Liệu anh có thể vượt qua tất cả để đạt được ước mơ của mình?
+              {movie.summary}
             </Text>
             <TouchableOpacity style={styles.button}>
               <Text style={styles.buttonText}>Xem tiếp</Text>
@@ -330,10 +537,16 @@ export default function TimeVenue({ route, navigation }) {
           >
             <AntDesign name="arrowleft" size={28} color="#FFFFFF" />
           </TouchableOpacity>
-          <Image
-            source={require("../img/play.png")}
-            style={styles.contentcenterImage}
-          />
+          <Pressable
+            onPress={handleOpenTrailer}
+            style={styles.contentPressablecenterImage}
+          >
+            <Image
+              source={require("../img/play.png")}
+              style={{ width: 50, height: 50, resizeMode: "contain" }}
+            />
+          </Pressable>
+
           <Image
             source={{ uri: movie.imagePortrait }}
             style={styles.movieImageAvata}
@@ -368,7 +581,7 @@ export default function TimeVenue({ route, navigation }) {
                     fontSize: 12,
                   }}
                 >
-                  {movie.age}
+                  T{movie.age}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -402,6 +615,7 @@ export default function TimeVenue({ route, navigation }) {
         />
       </View>
 
+      {/* Modal chọn thành phố */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -411,14 +625,17 @@ export default function TimeVenue({ route, navigation }) {
         }}
       >
         <View style={styles.modalView}>
-          <Text style={styles.modalTitle}>Vị trí</Text>
+          <Text style={styles.modalTitle}>Chọn thành phố</Text>
           <FlatList
-            data={provinces}
+            data={[...new Set(city)]} // Chỉ lấy các thành phố duy nhất
             keyExtractor={(item) => item}
             renderItem={({ item, index }) => (
               <TouchableOpacity
                 style={styles.provinceItem}
-                onPress={() => handleSelectProvince(index)}
+                onPress={() => {
+                  handleSelectCity(index); // Cập nhật thành phố đã chọn
+                  setSelectedProvinceIndex(index); // Cập nhật index đã chọn để hiển thị radio button
+                }}
               >
                 <View style={styles.radioButton}>
                   {selectedProvinceIndex === index ? (
@@ -431,19 +648,96 @@ export default function TimeVenue({ route, navigation }) {
               </TouchableOpacity>
             )}
           />
-          <View style={styles.modalButton}>
+          <View style={styles.modalButtons}>
             <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={styles.modalButtonClose}
+              onPress={() => setModalVisible(false)} // Đóng modal
+              style={styles.modalButtonCloses}
             >
-              <Text style={styles.modalButtonText}>Đóng</Text>
+              <Text style={styles.modalButtonTexts}>Đóng</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={handleConfirm}
+              style={styles.modalButtonCloses}
+              onPress={handleConfirmCity} // Gọi hàm xác nhận khi nhấn nút
+            >
+              <Text style={styles.modalButtonTexts}>Xác nhận</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal chọn rạp phim */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalAddressVisible}
+        onRequestClose={() => {
+          setModalAddressVisible(!modalAddressVisible);
+        }}
+      >
+        <View style={styles.modalView}>
+          <Text style={styles.modalTitle}>Chọn Rạp Phim</Text>
+          <FlatList
+            data={cinemas.filter((cinema) => cinema.city.name === selectedCity)} // Lọc địa chỉ theo thành phố đã chọn
+            keyExtractor={(item) => item.name}
+            renderItem={(
+              { item, index } // Thêm index vào tham số destructuring
+            ) => (
+              <TouchableOpacity
+                style={styles.provinceItem}
+                onPress={() => {
+                  setSelectedAddress(item.name); // Cập nhật địa chỉ đã chọn
+                  setSelectedProvinceIndex(index); // Cập nhật index đã chọn để hiển thị radio button
+                }}
+              >
+                <View style={styles.radioButton}>
+                  {selectedProvinceIndex === index ? (
+                    <Icon name="circle" size={20} color="#0033CC" />
+                  ) : (
+                    <Icon name="circle-thin" size={20} color="#0033CC" />
+                  )}
+                </View>
+                <Text style={styles.provinceText}>{item.name}</Text>
+              </TouchableOpacity>
+            )}
+          />
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              onPress={() => setModalAddressVisible(false)} // Đóng modal địa chỉ
+              style={styles.modalButtonCloses}
+            >
+              <Text style={styles.modalButtonTexts}>Đóng</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleConfirm} // Gọi hàm xác nhận khi nhấn nút
+              style={styles.modalButtonCloses}
+            >
+              <Text style={styles.modalButtonTexts}>Xác nhận</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal để hiển thị trailer */}
+      <Modal
+        visible={modalVisibleTrailer}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalTrailer}>
+          <View style={styles.modalContent}>
+            <Pressable
+              onPress={handleCloseTrailer}
               style={styles.modalButtonClose}
             >
-              <Text style={styles.modalButtonText}>Xác nhận</Text>
-            </TouchableOpacity>
+              <Icon name="times" size={20} color="white" />
+            </Pressable>
+            <YoutubePlayer
+              height={600}
+              width={400}
+              play={true}
+              videoId={trailerId} // ID của video YouTube
+              style={styles.modalVideoTrailer} // Style của video trailer
+            />
           </View>
         </View>
       </Modal>
@@ -709,19 +1003,91 @@ const styles = StyleSheet.create({
     textAlign: "left",
     flex: 1,
   },
-  modalButton: {
+  modalButtons: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end", // Đặt các nút ở phía bên phải
+    alignItems: "center", // Căn giữa các nút theo chiều dọc
     marginTop: 20,
   },
-  modalButtonClose: {
-    backgroundColor: "#0033CC",
+  modalButtonCloses: {
+    backgroundColor: "#0033CC", // Màu nền xanh
     padding: 10,
     borderRadius: 5,
+    width: 100, // Đặt chiều rộng của nút
+    marginLeft: 10, // Khoảng cách giữa các nút
   },
-  modalButtonText: {
-    color: "white",
+  modalButtonTexts: {
+    color: "white", // Đặt màu chữ là trắng để nổi bật trên nền xanh
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: 16,
+  },
+  contentPressablecenterImage: {
+    position: "absolute",
+    top: 120,
+    left: 180,
+  },
+  modalTrailer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalVideoTrailer: {
+    width: "90%",
+    height: "80%",
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+    position: "relative",
+    width: "100%", // Đặt chiều rộng video đầy modal
+    height: "100%", // Đặt chiều cao video đầy modal
+  },
+  modalButtonClose: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  cinemaButton: {
+    padding: 10,
+    backgroundColor: "white",
+    borderBottomColor: "#ccc",
+  },
+  cinemaText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  rowContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap", // Cho phép các button xuống dòng
+    justifyContent: "flex-start",
+  },
+  showtimeButton: {
+    padding: 10,
+    margin: 5,
+    backgroundColor: "#0000DD",
+    color: "white",
+    borderRadius: 5,
+    width: "20%", // Mỗi button chiếm khoảng 15% chiều ngang
+    alignItems: "center",
+    height: 40,
+    // hover màu xanh dương khi click vào
+  },
+  showtimeText: {
+    fontSize: 14,
+    color: "white",
+  },
+  roomText: {
+    fontSize: 16,
+    color: "#555",
+    fontWeight: "bold",
+    left: 10,
+  },
+  roomContainer: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
   },
 });

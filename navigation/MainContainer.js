@@ -21,6 +21,8 @@ import PayMent from '../screens/PayMent';
 import InformationPersonal from '../screens/InformationPersonal';
 import EditPassWord from '../screens/EditPassWord';
 import ForgetPassword from '../screens/ForgetPassword';
+import Transaction from '../screens/Transaction';
+import TransactionDetail from '../screens/TransactionDetail';
 
 // Tab Navigator
 const homePage = "Trang chủ";
@@ -128,6 +130,8 @@ export default function MainContainer() {
         <Stack.Screen name="InformationPersonal" component={InformationPersonal} />
         <Stack.Screen name="EditPassWord" component={EditPassWord} />
         <Stack.Screen name="ForgetPassword" component={ForgetPassword} />
+        <Stack.Screen name="Transaction" component={Transaction} />
+        <Stack.Screen name="TransactionDetail" component={TransactionDetail} />
       </Stack.Navigator>
     </NavigationContainer>
   );
