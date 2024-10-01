@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -8,10 +8,13 @@ import {
   Platform,
   KeyboardAvoidingView,
   Image,
+  Alert,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useRoute } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_CompleteOrder, API_CreateOrder } from "../api/Api";
 
 // Thành phần RadioButton tùy chỉnh
 const RadioButton = ({ selected, onPress }) => {
@@ -52,6 +55,110 @@ export default function PayMent({ navigation }) {
     "shopeePay",
     "payoo"
   );
+  // Lấy showtimeId từ route.params
+  const showtimeId = route.params.showtimeId;
+  console.log("showtimeId", showtimeId);
+  const [accessToken, setAccessToken] = useState(null);
+  const [seatIds, setSeatIds] = useState([0]); 
+  // Lấy accessToken từ AsyncStorage
+  useEffect(() => {
+    const fetchAccessToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("accessToken");
+        setAccessToken(token || "No token found"); // Provide a fallback message
+        console.log("Fetched accessToken:", token);
+      } catch (error) {
+        console.error("Error retrieving accessToken:", error);
+      }
+    };
+
+    fetchAccessToken();
+  }, []);
+
+  // Log accessToken
+  useEffect(() => {
+    console.log("accessToken:", accessToken);
+  }, [accessToken]);
+
+  // Hiển thị orderId từ route.params
+  const orderId = route.params.orderId;
+  console.log("orderId Thanh Toan", orderId);
+
+
+  // fetch API để gửi thông tin thanh toán
+  const handlePayment = async () => {
+    // Ensure the access token and orderId are available
+    if (!accessToken) {
+      Alert.alert("Error", "Access token is missing.");
+      return;
+    }
+    
+    if (!orderId) {
+      Alert.alert("Error", "Order ID is missing.");
+      return;
+    }
+  
+    // API URL with the orderId
+    // const API_CompleteOrder = `http://192.168.1.7:8080/api/v1/orders/${orderId}/complete`;
+  
+    // Prepare the payment data
+    const paymentData = {
+      showTimeId: showtimeId, // Replace with actual showtimeId
+      seatIds: [0], // Replace with actual selected seat IDs if necessary
+    };
+  
+    try {
+      // Make the PUT request to complete the order
+      const response = await fetch(API_CompleteOrder + orderId + "/complete", {
+        method: "PUT", // Use PUT method as requested
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`, // Use the accessToken in headers
+        },
+        body: JSON.stringify(paymentData), // Convert paymentData to JSON
+      });
+  
+      // Check if the response is okay
+      if (!response.ok) {
+        // Handle non-200 responses
+        const errorMessage = await response.text(); // Get the error message from the response
+        console.error("Payment error response:", errorMessage); // Log the error response
+        throw new Error("Payment failed: " + errorMessage); // Throw a detailed error
+      }
+  
+      // Parse the JSON response
+      const result = await response.json();
+      console.log("Payment result:", result); // Log the payment result
+  
+      // Show success alert and navigate back
+      Alert.alert("Thành công", "Thanh toán hoàn tất!", [
+        {
+          text: "OK",
+          onPress: () => navigation.navigate("MainTabs"), // Navigate back to MainTabs
+        },
+      ]);
+    } catch (error) {
+      console.error("Payment error:", error); // Log the error
+      Alert.alert("Error", "Payment could not be processed. Please try again."); // Show error alert
+    }
+  };
+  
+  // Lưu giá trị của Tổng cộng và ghế đã chọn và AsyncStorage  {route.params.total.toLocaleString("vi-VN")}đ và {route.params.getSelectedSeats} vào AsyncStorage
+  useEffect(() => {
+    const saveData = async () => {
+      try {
+        await AsyncStorage.setItem("total", route.params.total.toLocaleString("vi-VN") + "đ");
+        await AsyncStorage.setItem("seat", route.params.getSelectedSeats);
+      } catch (error) {
+        console.error("Error saving data:", error);
+      }
+    };
+
+    saveData();
+    // Khi đặt vé khác thì sẽ xóa AsyncStorage
+  }, []);
+
+
 
   return (
     <KeyboardAvoidingView
@@ -80,9 +187,8 @@ export default function PayMent({ navigation }) {
             <Text style={styles.infoText}>2D phụ đề</Text>
             {/* age */}
             <TouchableOpacity style={styles.buttonTextAge}>
-            <Text style={styles.movieAge}>T{route.params.age}</Text>
+              <Text style={styles.movieAge}>T{route.params.age}</Text>
             </TouchableOpacity>
-            
           </View>
           <View style={{ flexDirection: "row" }}>
             <Text style={styles.infoText}>{route.params.mall} -</Text>
@@ -187,7 +293,9 @@ export default function PayMent({ navigation }) {
               {route.params.total.toLocaleString("vi-VN")}đ
             </Text>
           </View>
-          <TouchableOpacity style={styles.button1}>
+          <TouchableOpacity style={styles.button1}
+            onPress={handlePayment}
+          >
             <Text style={styles.buttonText1}>Thanh toán</Text>
           </TouchableOpacity>
         </View>

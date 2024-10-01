@@ -20,7 +20,7 @@ import Icon1 from "react-native-vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/FontAwesome";
 import HorizontalDatepicker from "@awrminkhodaei/react-native-horizontal-datepicker";
 import axios from "axios"; // Import axios here
-import { API_GetMovieSlug, API_GetCinema } from "../api/Api";
+import { API_GetMovieSlug, API_GetCinema, API_GetShowtime } from "../api/Api";
 import YoutubePlayer from "react-native-youtube-iframe";
 
 export default function TimeVenue({ route, navigation }) {
@@ -183,12 +183,14 @@ export default function TimeVenue({ route, navigation }) {
           if (date && cinemaId) {
             // Gọi API khi có đủ movieId, date và cinemaId
             response = await axios.get(
-              `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
+              // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
+              API_GetShowtime + `?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
             );
           } else {
             // Gọi API chỉ với movieId nếu thiếu date hoặc cinemaId
             response = await axios.get(
-              `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}`
+              // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}`
+              API_GetShowtime + `?movieId=${movieId}`
             );
           }
 
@@ -211,6 +213,7 @@ export default function TimeVenue({ route, navigation }) {
   // Hiển thị showtimes
   console.log("Showtimes:", showtimes);
 
+  
   const handleConfirm = () => {
     if (selectedAddress) {
       // Thực hiện các thao tác với địa chỉ đã chọn

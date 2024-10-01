@@ -20,5 +20,22 @@ export const API_GetMovieSlug = `http://${host}:8080/api/v1/movies/`
 
 export const API_GetCinema = `http://${host}:8080/api/v1/cinemas`
 
+// roomLayout  `http://192.168.1.7:8080/api/v1/show-times/${showtimeId}/seat-layout`
+export const API_GetRoomLayout = `http://${host}:8080/api/v1/show-times/`
+
+// Showtime
+export const API_GetShowtime = `http://${host}:8080/api/v1/show-times`
+
+// Combo
+export const API_GetCombo = `http://${host}:8080/api/v1/products`
+
+
+export const API_CreateOrder = `http://${host}:8080/api/v1/orders`
+
+// Pyament
+// http://192.168.1.7:8080/api/v1/orders/${orderId}/complete
+export const API_CompleteOrder = `http://${host}:8080/api/v1/orders/`
+
+
 
 

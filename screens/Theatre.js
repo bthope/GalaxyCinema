@@ -8,26 +8,61 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView, // Import ScrollView
+  ScrollView,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { FontAwesome } from "@expo/vector-icons";
 import axios from "axios";
+import { API_GetRoomLayout } from "../api/Api";
 
 export default function Theatre({ navigation }) {
   const route = useRoute();
   const [seats, setSeats] = useState([]);
-  const pricePerSeat = 40000; // 40 nghìn VND mỗi ghế
   const selectedDate = new Date(route.params.selectedDate);
   const formattedStartTime = route.params.startTime.substring(0, 5);
   const formattedEndTime = route.params.endTime.substring(0, 5);
   const roomId = route.params.room;
   const [roomLayout, setRoomLayout] = useState(null);
+  const showtimeId = route.params.showtimeId;
+  const [seatPrices, setSeatPrices] = useState({ NORMAL: 0, COUPLE: 0 });
 
-  const calculateTotal = () => {
-    return seats.length * pricePerSeat;
+ // Calculate total based on seat type prices
+ const calculateTotal = () => {
+  let total = 0;
+
+  // Loop through each selected seat
+  seats.forEach((seatId) => {
+    const seat = findSeatById(seatId); // Find the seat object by its ID
+    if (seat) {
+      total += seat.price; // Use the price property from the seat data
+      if (seat.type === "COUPLE") {
+        // If it's a couple seat, also add the price of the paired seat
+        const pairSeat = seat.groupSeats.find(groupSeat =>
+          roomLayout.rows[seat.rowIndex]?.seats.find(s => s.columnIndex === groupSeat.columnIndex)
+        );
+        if (pairSeat) {
+          const pairedSeat = findSeatById(pairSeat.columnIndex); // Assuming columnIndex gives us the paired seat ID
+          if (pairedSeat) {
+            total += pairedSeat.price; // Add the paired seat's price
+          }
+        }
+      }
+    }
+  });
+
+  return total; // Return the calculated total
+};
+
+  const findSeatById = (seatId) => {
+    for (const row of roomLayout.rows) {
+      const seat = row.seats.find((s) => s.id === seatId);
+      if (seat) {
+        return seat;
+      }
+    }
+    return null;
   };
 
   useEffect(() => {
@@ -35,10 +70,14 @@ export default function Theatre({ navigation }) {
       const fetchRoomLayout = async () => {
         try {
           const response = await axios.get(
-            `http://192.168.1.7:8080/api/v1/rooms/${roomId}/layout`
+            API_GetRoomLayout + showtimeId + "/seat-layout"
           );
           console.log("Room Layout Data:", response.data);
           setRoomLayout(response.data.data);
+
+          // Update seat prices
+          const { NORMAL, COUPLE } = response.data.data.prices;
+          setSeatPrices({ NORMAL, COUPLE });
         } catch (error) {
           console.log("Fetch room error: ", error);
         }
@@ -55,13 +94,19 @@ export default function Theatre({ navigation }) {
     return (
       <View style={styles.seatContainer}>
         {roomLayout.rows.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.layfromrow}>
+          <View key={rowIndex} style={styles.rowContainer}>
             <View style={styles.rowLabelContainer}>
               <Text style={styles.rowLabel}>{row.name}</Text>
             </View>
             <View style={styles.seatRow}>
               {row.seats.map((seat, seatIndex) => (
-                <View key={seatIndex} style={styles.seatWrapper}>
+                <View
+                  key={seatIndex}
+                  style={[
+                    styles.seatWrapper,
+                    seat.type === "COUPLE" && styles.coupleSeatWrapper,
+                  ]}
+                >
                   <Pressable
                     style={[
                       styles.seat,
@@ -70,9 +115,12 @@ export default function Theatre({ navigation }) {
                         : seats.includes(seat.id)
                         ? styles.selectedSeat
                         : styles.availableSeat,
+                      seat.type === "COUPLE" && styles.coupleSeat,
+                      seats.includes(seat.id) && styles.selectedSeat,
                     ]}
                     onPress={() => {
                       if (!seat.isBooked) {
+                        // Toggle seat selection
                         setSeats((prevSeats) => {
                           if (prevSeats.includes(seat.id)) {
                             return prevSeats.filter((id) => id !== seat.id);
@@ -87,7 +135,6 @@ export default function Theatre({ navigation }) {
                 </View>
               ))}
             </View>
-
             <View style={styles.rowLabelContainer}>
               <Text style={styles.rowLabel}>{row.name}</Text>
             </View>
@@ -96,22 +143,31 @@ export default function Theatre({ navigation }) {
       </View>
     );
   };
-
   const getSelectedSeatsInfo = () => {
     if (!roomLayout || !Array.isArray(roomLayout.rows)) {
       return [];
     }
   
-    return seats.map((seatId) => {
-      for (const row of roomLayout.rows) {
-        const seat = row.seats.find((s) => s.id === seatId);
+    return seats
+      .map((seatId) => {
+        const seat = findSeatById(seatId);
         if (seat) {
-          return `${row.name}${seat.name}`; // Concatenate row name and seat name (e.g., "H9")
+          // Get the corresponding row using rowIndex
+          const row = roomLayout.rows[seat.rowIndex]; // Assuming seat.rowIndex points to the correct row
+          console.log("Row: ", row);
+          
+          if (row) {
+            return `${row.name}${seat.name}`; // Concatenate row name and seat name (e.g., "D8")
+          }
         }
-      }
-      return null;
-    }).filter(Boolean); // Filter out null values if any seatId is not found
+        return null;
+      })
+      .filter(Boolean); // Filter out null values if any seatId is not found
   };
+  
+  // Example log
+  console.log("Selected seats: ", getSelectedSeatsInfo());
+  
   
 
   return (
@@ -161,43 +217,34 @@ export default function Theatre({ navigation }) {
               Thời gian kết thúc: {formattedEndTime}
             </Text>
             <Text style={styles.seatCount}>
-              {/* Lấy số name và số ghế*/}
-              Ghế: {getSelectedSeatsInfo().join(', ')}
+              Ghế: {getSelectedSeatsInfo().join(", ")}
             </Text>
           </View>
           <View style={styles.totalAmount}>
             <Text>
-              Tổng cộng: 
+              Tổng cộng:{" "}
+              {calculateTotal().toLocaleString("vi-VN")} VND
             </Text>
-            <Text> {calculateTotal().toLocaleString("vi-VN")} VND</Text>
           </View>
         </View>
 
         <TouchableOpacity
           onPress={() =>
             navigation.navigate("SelectCombo", {
-              //Hiện thị ghế đã chọn
               seats: getSelectedSeatsInfo(),
               total: calculateTotal(),
               name: route.params.movieTitle,
               mall: route.params.cinemaName,
               timeSelected: formattedStartTime,
               tableSeats: route.params.roomName,
-              // Rạp phim
               movie: route.params.movie,
-              // Hiển thị ghế đã chọn 
-              getSelectedSeats: getSelectedSeatsInfo().join(', '),
-              // thêm hình ảnh phim movieImage
+              getSelectedSeats: getSelectedSeatsInfo().join(", "),
               movieImage: route.params.movieImage,
-              // startTime
               startTime: formattedStartTime,
-              // age: movie.age,
               age: route.params.age,
-              // selectedDate: selectedDateFormatted,
               selectedDate: route.params.selectedDate,
-              
-             
-
+              //showtimeId
+              showtimeId: route.params.showtimeId,
             })
           }
           style={styles.button}
@@ -216,8 +263,8 @@ const styles = StyleSheet.create({
     paddingTop: 38,
   },
   safeArea: {
-    flex: 1, // Fill the entire area
-    justifyContent: "space-between", // Keep content distributed
+    flex: 1,
+    justifyContent: "space-between",
   },
   button: {
     width: "100%",
@@ -233,63 +280,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  seatContainer: {
-    marginVertical: 20,
+  movieTitle: {
+    fontSize: 18,
+    fontWeight: "600",
   },
-  layfromrow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginVertical: 5,
-    width: "100%", // Ensures full width
-  },
-  rowLabelContainer: {
-    maxWidth: "25%", // Fixed width for row labels
-    alignItems: "center", // Center align the labels
-    width: "20%",
-  },
-  seatRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-    flexGrow: 1,
-    maxWidth: "75%", // Limits the width to prevent pushing labels
-  },
-  rowLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  seat: {
-    width: 20,
-    height: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 1,
-  },
-  availableSeat: {
-    backgroundColor: "white",
-  },
-  bookedSeat: {
-    backgroundColor: "#989898",
-  },
-  selectedSeat: {
-    backgroundColor: "#ffc40c",
-  },
-  seatText: {
-    fontSize: 10,
-    color: "black",
-  },
-  seatWrapper: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 10,
+  cinemaName: {
+    fontSize: 15,
+    marginTop: 2,
+    color: "gray",
+    fontWeight: "500",
   },
   movieInfo: {
     marginLeft: 9,
@@ -310,6 +309,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 10,
   },
+  seatContainer: {
+    marginVertical: 20,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
   startTime: {
     textAlign: "center",
     fontSize: 12,
@@ -317,6 +324,76 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: "gray",
   },
+
+  rowContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 5,
+    width: "100%",
+  },
+  rowLabelContainer: {
+    maxWidth: "25%",
+    alignItems: "center",
+    width: "10%",
+  },
+  seatRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    flexGrow: 1,
+    maxWidth: "75%",
+  },
+  rowLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  seat: {
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: "#999999",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 4,
+  },
+  availableSeat: {
+    backgroundColor: "white",
+  },
+  bookedSeat: {
+    backgroundColor: "#989898",
+  },
+  selectedSeat: {
+    backgroundColor: "#FFC40C",
+  },
+  seatText: {
+    fontSize: 9,
+    fontWeight: "bold",
+  },
+  coupleSeat: {
+    width: 42,
+    backgroundColor: "white",
+  },
+  coupleSeatWrapper: {
+    flexDirection: "row",
+  },
+  totalContainer: {
+    flexDirection: "row",
+    paddingTop: 10,
+    paddingLeft: 4,
+    width: 410,
+    paddingBottom: 20,
+
+  },
+  totalContainerLeft: {
+    width: 200,
+    height: 50,
+  },
+  endTime: {
+    paddingLeft: 25,
+  },
+
   legend: {
     flexDirection: "row",
     alignItems: "center",
@@ -330,24 +407,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 10,
   },
-  totalContainer: {
-    flexDirection: "row",
-    paddingTop: 10,
-    paddingLeft: 4,
-    width: 410,
-    paddingBottom: 20,
-  },
-  totalContainerLeft: {
-    width: 200,
-    height: 50,
-  },
-  endTime: {
-    paddingLeft: 25,
-  },
-  seatCount: {
-    paddingLeft: 25,
-    paddingTop: 10,
-  },
   totalAmount: {
     paddingLeft: 25,
     paddingTop: 10,
@@ -358,9 +417,8 @@ const styles = StyleSheet.create({
     right: -60,
     width: 150,
   },
-  seatLayoutContainer: {
-    alignItems: "center", // Use contentContainerStyle for alignment
-    marginTop: 20,
-    paddingBottom: 20, // Add padding if needed for scroll comfort
+  seatCount: {
+    paddingLeft: 25,
+    paddingTop: 10,
   },
 });

@@ -29,6 +29,31 @@ export default function Account({ navigation }) {
     };
 
     console.log("User", userData);
+    //Hiển thị accessToken trong userData
+    useEffect(() => {
+      if (userData) {
+        console.log('Access Token:', userData.accessToken);
+      }
+    }, [userData]);
+    console.log("Access Token:", userData?.accessToken);
+    // Lưu accessToken vào AsyncStorage
+      // Lưu accessToken vào AsyncStorage
+  useEffect(() => {
+    const storeAccessToken = async () => {
+      if (userData && userData.accessToken) {
+        try {
+          await AsyncStorage.setItem('accessToken', userData.accessToken);
+          console.log('Access Token saved successfully:', userData.accessToken);
+        } catch (error) {
+          console.error('Error saving accessToken:', error);
+        }
+      }
+    };
+
+    storeAccessToken();
+  }, [userData]);
+    
+    
     
   
     // Automatically load data when the screen is focused or re-focused
@@ -142,7 +167,9 @@ const removeUserData = async () => {
               </TouchableOpacity>
               
             </View>
-            <View style={styles.contentTT2}>
+            <View style={styles.contentTT2}
+              onStartShouldSetResponder={() => navigation.navigate('Transaction')}
+            >
               <Image source={require('../img/undo.png')} style={styles.imgUser} />
               <Text style={{ color: 'black', textAlign: 'center', marginTop: 5, width: 100 }}>Giao dịch</Text>
             </View>

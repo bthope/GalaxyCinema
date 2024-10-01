@@ -14,6 +14,8 @@ import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import axios from "axios";
 import { useRoute } from "@react-navigation/native";
+import { API_CreateOrder, API_GetCombo } from "../api/Api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SelectCombo({ navigation }) {
   const route = useRoute();
@@ -25,7 +27,7 @@ export default function SelectCombo({ navigation }) {
     const fetchCombos = async () => {
       try {
         const response = await axios.get(
-          "http://192.168.1.7:8080/api/v1/products"
+            API_GetCombo
         );
         setCombos(response.data.data); // Assuming response.data.data contains the combo array
       } catch (error) {
@@ -66,6 +68,106 @@ export default function SelectCombo({ navigation }) {
   };
 
   const totalWithCombos = route.params.total + calculateTotal();
+
+  // Lay showtimeId tu route.params
+  const showtimeId = route.params.showtimeId;
+  // console.log("showtimeId", showtimeId);
+  const [accessToken, setAccessToken] = useState(null);
+  const [seatIds, setSeatIds] = useState([0]); 
+  // Lấy accessToken từ AsyncStorage
+  useEffect(() => {
+    const fetchAccessToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("accessToken");
+        setAccessToken(token || "No token found"); // Provide a fallback message
+        console.log("Fetched accessToken:", token);
+      } catch (error) {
+        console.error("Error retrieving accessToken:", error);
+      }
+    };
+
+    fetchAccessToken();
+  }, []);
+
+  // Log accessToken
+  useEffect(() => {
+    console.log("accessToken:", accessToken);
+  }, [accessToken]);
+
+  // fetch API để gửi thông tin thanh toán
+  const handleCombo = async () => {
+    // Ensure the access token is available
+    if (!accessToken) {
+      Alert.alert("Error", "Access token is missing.");
+      return;
+    }
+  
+    // Prepare the payment data
+    const paymentData = {
+      showTimeId:  showtimeId,
+      seatIds: [0], // Replace with actual selected seat IDs if necessary
+    };
+  
+    try {
+      // Make the POST request to the API
+      const response = await fetch(API_CreateOrder, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`, // Use the accessToken in headers
+        },
+        body: JSON.stringify(paymentData), // Convert paymentData to JSON
+      });
+  
+      // Check if the response is okay
+      if (!response.ok) {
+        // Handle non-200 responses
+        const errorMessage = await response.text(); // Get the error message from the response
+        console.error("Payment error response:", errorMessage); // Log the error response
+        throw new Error("Payment failed: " + errorMessage); // Throw a detailed error
+      }
+  
+      // Parse the JSON response
+      const result = await response.json();
+      console.log("combo result:", result); // Log the payment result
+
+
+    // Extract the order ID from the response
+    const orderId = result.data.id;
+    console.log("Order ID:", orderId); // Log the order ID
+  
+      // Show success alert and navigate back
+      navigation.navigate("PayMent", {
+        seats: route.params.seats,
+         total: totalWithCombos,
+         name: route.params.name,
+         mall: route.params.mall,
+         timeSelected: route.params.timeSelected,
+         tableSeats: route.params.tableSeats,
+         movie: route.params.movie,
+         getSelectedSeats: route.params.getSelectedSeats,
+         movieImage: route.params.movieImage,
+         startTime: route.params.startTime,
+         // Thêm thông tin combo
+         selectedCombos: selectedCombos,
+         //age
+         age: route.params.age,
+         cinemaName: route.params.cinemaName,
+         // selectedDate
+         selectedDate: route.params.selectedDate,
+         // selectedDate: selectedDate,
+         selectedDate: route.params.selectedDate,
+         //showtimeId
+         showtimeId: route.params.showtimeId,
+          //orderId
+          orderId: orderId,
+       });
+      
+    } catch (error) {
+      console.error("Payment error:", error); // Log the error
+      Alert.alert("Error", "Payment could not be processed. Please try again."); // Show error alert
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -146,46 +248,7 @@ export default function SelectCombo({ navigation }) {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("PayMent", {
-              //   seats: getSelectedSeatsInfo(),
-              // total: calculateTotal(),
-              // name: route.params.movieTitle,
-              // mall: route.params.cinemaName,
-              // timeSelected: formattedStartTime,
-              // tableSeats: route.params.roomName,
-              // // Rạp phim
-              // movie: route.params.movie,
-              // // Hiển thị ghế đã chọn 
-              // getSelectedSeats: getSelectedSeatsInfo().join(', '),
-              // // thêm hình ảnh phim movieImage
-              // movieImage: route.params.movieImage,
-              // // startTime
-              // startTime: formattedStartTime,
-              // Lấy các thông tin này
-               seats: route.params.seats,
-                total: totalWithCombos,
-                name: route.params.name,
-                mall: route.params.mall,
-                timeSelected: route.params.timeSelected,
-                tableSeats: route.params.tableSeats,
-                movie: route.params.movie,
-                getSelectedSeats: route.params.getSelectedSeats,
-                movieImage: route.params.movieImage,
-                startTime: route.params.startTime,
-                // Thêm thông tin combo
-                selectedCombos: selectedCombos,
-                //age
-                age: route.params.age,
-                cinemaName: route.params.cinemaName,
-                // selectedDate
-                selectedDate: route.params.selectedDate,
-                // selectedDate: selectedDate,
-                selectedDate: route.params.selectedDate,
-               
-
-              })
-            }
+            onPress={handleCombo}
            
             style={styles.button}
           >
