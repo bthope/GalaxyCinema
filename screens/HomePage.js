@@ -15,11 +15,14 @@ import { images } from "../data/imageData"; // Adjust the path as needed
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import { imageDataFooter } from "../data/imageDataFooter";
 import { API_GetMovies } from "../api/Api";
+import { LogBox } from "react-native"; // Import LogBox
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = width * 0.75;
 const SIDE_ITEM_WIDTH = (width - ITEM_WIDTH) / 2;
 const ITEM_WIDTH_CONTENT = width / 2;
+
+LogBox.ignoreLogs(["VirtualizedList: Encountered an error while measuring a list's offset from its containing VirtualizedList."]);
 
 const MovieItem = ({ item, navigation }) => (
   <TouchableOpacity

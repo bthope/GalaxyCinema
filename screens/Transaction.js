@@ -13,6 +13,7 @@ import React, { useEffect, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_GetTransaction } from "../api/Api";
 
 export default function Transaction({ navigation }) {
   // State variables
@@ -41,7 +42,8 @@ export default function Transaction({ navigation }) {
       if (accessToken) {
         try {
           const response = await fetch(
-            "http://192.168.1.7:8080/api/v1/orders",
+            // "http://192.168.1.7:8080/api/v1/orders",
+            API_GetTransaction,
             {
               method: "GET",
               headers: {
@@ -56,8 +58,10 @@ export default function Transaction({ navigation }) {
           }
 
           const data = await response.json();
-          setOrders(data.data); // Assuming 'data' contains the orders
-          console.log("Fetched orders:", data.data);
+           // Sort orders by orderDate in descending order (newest first)
+        const sortedOrders = data.data.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+        setOrders(sortedOrders); // Update the state with the sorted orders
+        console.log("Fetched orders:", sortedOrders);
         } catch (error) {
           console.error("Error fetching orders:", error);
         } finally {
@@ -110,6 +114,7 @@ export default function Transaction({ navigation }) {
                 code: order.code,
                //  "totalPrice": 100000.0, kiểu số thực
                 totalPrice: order.totalPrice,
+                finalAmount: order.finalAmount,
                 rating: order.showTime.movie.rating,
              
                 //  "orderDetails": [
