@@ -1,4 +1,4 @@
-export const host = "192.168.1.7";
+export const host = "192.168.1.8";
 
 // Account
 
@@ -17,24 +17,35 @@ export const API_GetMovies = `http://${host}:8080/api/v1/movies`
 export const API_GetMovieSlug = `http://${host}:8080/api/v1/movies/`
 
 // Cinema
-
 export const API_GetCinema = `http://${host}:8080/api/v1/cinemas`
 
-// roomLayout  `http://192.168.1.7:8080/api/v1/show-times/${showtimeId}/seat-layout`
+// roomLayout  
 export const API_GetRoomLayout = `http://${host}:8080/api/v1/show-times/`
 
 // Showtime
 export const API_GetShowtime = `http://${host}:8080/api/v1/show-times`
 
-// Combo
+// Get Sản phẩm
 export const API_GetCombo = `http://${host}:8080/api/v1/products`
 
-
+//Tạo đơn hàng
 export const API_CreateOrder = `http://${host}:8080/api/v1/orders`
 
-// Pyament
-// http://192.168.1.7:8080/api/v1/orders/${orderId}/complete
+
+// Pyament Hoàn tất đơn hàng
 export const API_CompleteOrder = `http://${host}:8080/api/v1/orders/`
+
+// Transaction  Lịch sử
+export const API_GetTransaction = `http://${host}:8080/api/v1/orders`
+
+// Cập nhật sản phẩm 
+export const API_UpdateProduct = `http://${host}:8080/api/v1/orders/`
+
+// Tạo Discount
+export const API_GetDiscount = `http://${host}:8080/api/v1/orders/`
+
+// Xóa discount  
+export const API_DeleteDiscount = `http://${host}:8080/api/v1/orders/`
 
 
 

@@ -29,52 +29,13 @@ export default function TransactionDetail({ route, navigation }) {
     totalPrice,
     seatName,
     rating,
+    finalAmount
   } = route.params;
 
   // Format the date and time if necessary
   const formattedOrderDate = new Date(orderDate).toLocaleString();
   const formattedStartTime = startTime.substring(0, 5); // Only display hours and minutes
-
-  // useEffect(() => {
-  //   const saveData = async () => {
-  //     try {
-  //       await AsyncStorage.setItem("total", route.params.total.toLocaleString("vi-VN") + "đ");
-  //       await AsyncStorage.setItem("seat", route.params.getSelectedSeats);
-  //     } catch (error) {
-  //       console.error("Error saving data:", error);
-  //     }
-  //   };
-
-  //   saveData();
-  //   // Khi đặt vé khác thì sẽ xóa AsyncStorage
-  //   return () => {
-  //     AsyncStorage.removeItem("total");
-  //     AsyncStorage.removeItem("seat");
-  //   };
-  // }, []);
-  // Lấy dữ liệu từ AsyncStorage  await AsyncStorage.setItem("total", route.params.total.toLocaleString("vi-VN") + "đ") và await AsyncStorage.setItem("seat", route.params.getSelectedSeats)
-  const [totalPriceAs, setTotalPriceAs] = useState("");
-  const [seatNameAs, setSeatNameAs] = useState("");
-
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const totalPrice = await AsyncStorage.getItem("total");
-        const seatName = await AsyncStorage.getItem("seat");
-        if (totalPrice !== null && seatName !== null) {
-          setTotalPriceAs(totalPrice);
-          setSeatNameAs(seatName); // Parse seatName if it's stored as an array
-        }
-      } catch (error) {
-        console.error("Error getting data:", error);
-      }
-    };
-
-    getData();
-  }, []);
-  console.log(totalPriceAs);
-  console.log(seatNameAs);
-
+  
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -124,7 +85,7 @@ export default function TransactionDetail({ route, navigation }) {
 
         <View style={styles.contentSeact}>
           <Text style={styles.detailsSeat}>
-            Ghế: {seatName.length > 0 ? seatName.join(", ") : seatNameAs}
+          Ghế: {seatName.join(", ")}
           </Text>
         </View>
 
@@ -134,7 +95,7 @@ export default function TransactionDetail({ route, navigation }) {
           <Text style={styles.detailsRating}>Stars: {rating}</Text>
           {/* Hiển thị thêm totalPriceAs */}
           <Text style={styles.details}>
-            Tổng Cộng: {totalPrice.length > 0 ? totalPrice : totalPriceAs} 
+            Tổng Cộng: {finalAmount.toLocaleString("vi-VN")}đ
           </Text>
         </View>
       </View>
@@ -198,7 +159,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   buttonTextAge: {
-    backgroundColor: "#FF4500",
+    backgroundColor: "#FF8C00",
     borderRadius: 4,
     paddingVertical: 3,
     paddingHorizontal: 8,

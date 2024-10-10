@@ -15,7 +15,8 @@ import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { FontAwesome } from "@expo/vector-icons";
 import axios from "axios";
-import { API_GetRoomLayout } from "../api/Api";
+import { API_CreateOrder, API_GetRoomLayout } from "../api/Api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Theatre({ navigation }) {
   const route = useRoute();
@@ -143,31 +144,79 @@ export default function Theatre({ navigation }) {
       </View>
     );
   };
+
+  const [accessToken, setAccessToken] = useState(null);
+  // Lấy accessToken từ AsyncStorage
+  useEffect(() => {
+    const fetchAccessToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("accessToken");
+        setAccessToken(token || "No token found"); // Provide a fallback message
+        console.log("Fetched accessToken:", token);
+      } catch (error) {
+        console.error("Error retrieving accessToken:", error);
+      }
+    };
+
+    fetchAccessToken();
+  }, []);
+
+  console.log("Token:", accessToken);
+  console.log("Showtime ID:", showtimeId);
+
+  // Post selected seats to the API
+  const postSelectedSeats = async (selectedSeats) => {
+    try {
+      const response = await axios.post(
+        // "http://192.168.1.8:8080/api/v1/orders",
+        API_CreateOrder,
+        {
+          showTimeId: showtimeId,
+          seatIds: selectedSeats,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      console.log("API response:", response.data);
+      // Hiển thị ra orderId từ response.data
+      const orderId = response.data.data.id;
+      console.log("Order ID:", orderId);
+      // Lưu orderId vào AsyncStorage
+      await AsyncStorage.setItem("orderId", orderId.toString());
+    } catch (error) {
+      
+    }
+  };
+
   const getSelectedSeatsInfo = () => {
     if (!roomLayout || !Array.isArray(roomLayout.rows)) {
       return [];
     }
-  
-    return seats
-      .map((seatId) => {
-        const seat = findSeatById(seatId);
-        if (seat) {
-          // Get the corresponding row using rowIndex
-          const row = roomLayout.rows[seat.rowIndex]; // Assuming seat.rowIndex points to the correct row
-          console.log("Row: ", row);
-          
-          if (row) {
-            return `${row.name}${seat.name}`; // Concatenate row name and seat name (e.g., "D8")
-          }
+    const selectedSeats = seats.map((seatId) => {
+      const seat = findSeatById(seatId);
+      if (seat) {
+        const row = roomLayout.rows[seat.rowIndex];
+        if (row) {
+          return `${row.name}${seat.name}`;
         }
-        return null;
-      })
-      .filter(Boolean); // Filter out null values if any seatId is not found
+      }
+      return null;
+    }).filter(Boolean);
+
+    // Post the selected seats whenever the seats are selected
+    if (selectedSeats.length > 0) {
+      postSelectedSeats(seats); // Pass the seat IDs to the API
+    }
+
+    return selectedSeats;
   };
+
   
   // Example log
   console.log("Selected seats: ", getSelectedSeatsInfo());
-  
   
 
   return (
@@ -245,6 +294,8 @@ export default function Theatre({ navigation }) {
               selectedDate: route.params.selectedDate,
               //showtimeId
               showtimeId: route.params.showtimeId,
+              // orderId 
+              orderId: route.params.orderId,
             })
           }
           style={styles.button}
