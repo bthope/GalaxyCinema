@@ -18,6 +18,7 @@ import { API_CompleteOrder, API_DeleteDiscount, API_GetDiscount } from "../api/A
 import { Modal } from "react-native-paper";
 import { TextInput } from "react-native-gesture-handler";
 import axios from "axios";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 // Thành phần RadioButton tùy chỉnh
 const RadioButton = ({ selected, onPress }) => {
@@ -234,12 +235,34 @@ export default function PayMent({ navigation }) {
       await AsyncStorage.removeItem("orderId");
       // Xóa AsyncStorage timeLeft
       await AsyncStorage.removeItem("timeLeft");
+      // Xóa đi thông tin đếm ngược
+      setTimeLeft(null);
 
       // Show success alert and navigate back
       Alert.alert("Thành công", "Thanh toán hoàn tất!", [
         {
           text: "OK",
-          onPress: () => navigation.navigate("MainTabs"), // Navigate back to MainTabs
+          onPress: () => navigation.navigate("DetailedInvoice",{
+            movieImage: route.params.movieImage,
+           
+            startTime: route.params.startTime,
+            selectedCombos: route.params.selectedCombos,
+            age: route.params.age,
+            cinemaName: route.params.cinemaName,
+            selectedDate: route.params.selectedDate,
+            seats: route.params.seats,
+            total: route.params.total,
+            name: route.params.name,
+            mall: route.params.mall,
+            timeSelected: route.params.timeSelected,
+            tableSeats: route.params.tableSeats,
+            getSelectedSeats: route.params.getSelectedSeats,
+            rating: route.params.rating,
+            // Hiển thị giá finalAmount
+            finalAmount: finalAmount !== null && finalAmount !== 0
+              ? finalAmount
+              : route.params.total,
+          }), // Navigate back to MainTabs
         },
       ]);
     } catch (error) {
@@ -269,71 +292,62 @@ export default function PayMent({ navigation }) {
 
  
 
-  // Load giá trị thời gian đã lưu từ AsyncStorage
-  const loadTimeLeft = async () => {
-    try {
-      const savedTime = await AsyncStorage.getItem("timeLeft");
-      if (savedTime !== null) {
-        setTimeLeft(parseInt(savedTime, 10)); // Chuyển đổi chuỗi sang số
-      } else {
-        setTimeLeft(360); // Nếu không có giá trị lưu trước đó, khởi tạo lại với giá trị 360 giây
-      }
-    } catch (error) {
-      console.error("Error loading time left:", error);
-    }
-  };
-
-  // Effect để load timeLeft và bắt đầu đếm ngược
-  useEffect(() => {
-    loadTimeLeft(); // Load saved time when the component mounts
-  }, []);
-
-  // Effect để đếm ngược
-  useEffect(() => {
-    if (timeLeft === null) return; // Nếu chưa có thời gian thì không làm gì
-    if (timeLeft === 0) {
-      navigation.navigate("MainTabs"); // Điều hướng khi hết thời gian
-      return;
-    }
-
-    // Bắt đầu đếm ngược
-    const timer = setTimeout(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime > 0) {
-          return prevTime - 1; // Giảm thời gian mỗi giây
-        } else {
-          return 0; // Đảm bảo timeLeft là 0
+    // Load giá trị thời gian đã lưu từ AsyncStorage (nếu cần)
+    const loadTimeLeft = async () => {
+      try {
+        const savedTime = await AsyncStorage.getItem("timeLeft");
+        if (savedTime !== null) {
+          setTimeLeft(parseInt(savedTime, 10)); // Chuyển đổi chuỗi sang số
         }
-      });
-    }, 1000); // Cập nhật mỗi 1 giây
-
-    return () => clearTimeout(timer); // Hủy bỏ timer khi component bị unmount
-  }, [timeLeft]);
-
-  // Lưu giá trị timeLeft vào AsyncStorage trước khi unmount
-  useEffect(() => {
-    const saveTimeLeft = async () => {
-      if (timeLeft !== null) {
-        try {
-          await AsyncStorage.setItem("timeLeft", timeLeft.toString());
-        } catch (error) {
-          console.error("Error saving time left:", error);
-        }
+      } catch (error) {
+        console.error("Error loading time left:", error);
       }
     };
-
-    saveTimeLeft(); // Lưu timeLeft mỗi khi nó thay đổi
-  }, [timeLeft]);
-
-  // Hàm format thời gian
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
-  };
-
-
-
+  
+    // Lưu giá trị thời gian còn lại vào AsyncStorage
+    const saveTimeLeft = async (time) => {
+      try {
+        await AsyncStorage.setItem("timeLeft", time.toString());
+      } catch (error) {
+        console.error("Error saving time left:", error);
+      }
+    };
+  
+    // Effect để load giá trị timeLeft khi component mount
+    useEffect(() => {
+      if (!route.params?.timeLeft) {
+        loadTimeLeft(); // Chỉ load từ AsyncStorage nếu không có giá trị từ params
+      }
+    }, []);
+  
+    // Effect đếm ngược thời gian
+    useEffect(() => {
+      if (timeLeft === 0) {
+        navigation.navigate("MainTabs"); // Điều hướng khi hết thời gian
+        return;
+      }
+  
+      // Đếm ngược mỗi giây
+      const timer = setTimeout(() => {
+        setTimeLeft((prevTime) => prevTime - 1); // Giảm thời gian
+      }, 1000);
+  
+      return () => clearTimeout(timer); // Hủy timer khi component unmount
+    }, [timeLeft]);
+  
+    // Lưu giá trị timeLeft vào AsyncStorage khi có sự thay đổi
+    useEffect(() => {
+      if (timeLeft !== null) {
+        saveTimeLeft(timeLeft);
+      }
+    }, [timeLeft]);
+  
+    // Hàm format thời gian
+    const formatTime = (seconds) => {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
+    };
   return (
     <KeyboardAvoidingView
       contentContainerStyle={styles.contain}

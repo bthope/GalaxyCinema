@@ -9,51 +9,115 @@ import {
   Image,
   TextInput,
 } from "react-native";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
-import { RadioButton } from "react-native-paper"; // Import RadioButton
+import AsyncStorage from "@react-native-async-storage/async-storage"; 
+import { RadioButton } from "react-native-paper";
+import { API_GetUser, API_UpdateUser } from "../api/Api";
 
 export default function InformationPersonal({ navigation }) {
-  // State to hold user data
   const [userData, setUserData] = useState({
     name: "",
     phone: "",
     birthday: "",
     email: "",
-    gender: true, // Default gender (true = male, false = female)
+    gender: true, // true = male, false = female
   });
   const [loading, setLoading] = useState(true);
 
-  const loadUserData = async () => {
-    try {
-      const storedUserData = await AsyncStorage.getItem("userInfo"); // Retrieve data
-      if (storedUserData) {
-        setUserData(JSON.parse(storedUserData)); // Parse and set user data
+  const [accessToken, setAccessToken] = useState(null);
+
+  useEffect(() => {
+    const fetchAccessToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("accessToken");
+        setAccessToken(token || ""); 
+        console.log("Fetched accessToken:", token);
+      } catch (error) {
+        console.error("Error retrieving accessToken:", error);
       }
+    };
+
+    fetchAccessToken();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch(API_GetUser, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user profile");
+      }
+
+      const result = await response.json();
+      setUserData({
+        name: result.data.name,
+        phone: result.data.phone,
+        birthday: result.data.birthday,
+        email: result.data.email,
+        gender: result.data.gender, 
+      });
+      console.log("Fetched user data:", result.data);
     } catch (error) {
-      console.log("Failed to load user data:", error);
+      console.error("Error fetching user profile:", error);
     } finally {
-      setLoading(false); // Set loading to false after fetching data
+      setLoading(false);
     }
   };
 
-  // Automatically load data when the screen is focused or re-focused
   useFocusEffect(
     useCallback(() => {
-      loadUserData();
-    }, [])
+      if (accessToken) {
+        fetchUserProfile();
+      }
+    }, [accessToken])
   );
 
-  // Function to handle updates to text fields
   const handleChange = (field, value) => {
     setUserData((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
+
+  const updateUserProfile = async () => {
+    try {
+      const response = await fetch(API_UpdateUser, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: userData.name,
+          phone: userData.phone,
+          birthday: userData.birthday,
+          gender: userData.gender,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      const result = await response.json();
+      console.log("Profile updated successfully:", result);
+      navigation.navigate("MainTabs");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
+  };
+
+  if (loading) {
+    return <Text>Loading...</Text>;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -70,15 +134,15 @@ export default function InformationPersonal({ navigation }) {
       </View>
       <View style={styles.contentAvt}>
         <View>
-            <Image source={require("../img/user.png")} style={styles.imgUser} />
-            <Image source={require("../img/photo.png")} style={styles.imgPhoto} />
+          <Image source={require("../img/user.png")} style={styles.imgUser} />
+          <Image source={require("../img/photo.png")} style={styles.imgPhoto} />
         </View>
-       
+
         <Text style={styles.textUser}>
           {userData ? userData.name : "Tên người dùng"}
         </Text>
       </View>
-      {/* Thong tin ca nhan */}
+
       <View style={styles.info}>
         <TextInput
           style={styles.inputRepair}
@@ -87,7 +151,7 @@ export default function InformationPersonal({ navigation }) {
           onChangeText={(text) => handleChange("name", text)}
         />
         <TextInput
-          style={styles.input}
+          style={styles.inputRepair}
           placeholder="Phone"
           value={userData.phone}
           onChangeText={(text) => handleChange("phone", text)}
@@ -102,9 +166,9 @@ export default function InformationPersonal({ navigation }) {
           style={styles.input}
           placeholder="Email"
           value={userData.email}
-          onChangeText={(text) => handleChange("email", text)}
+          editable={false} // Không cho phép người dùng thay đổi email
         />
-        {/* Giới tính dùng radio để hiển thị 2 nút chọn nam và nữ */}
+
         <View style={styles.genderContainer}>
           <View style={styles.radioGroup}>
             <View style={styles.radioItem}>
@@ -126,22 +190,15 @@ export default function InformationPersonal({ navigation }) {
           </View>
         </View>
         <View style={styles.contentfooter}>
-          {/* Cap nhat thong tin */}
           <View>
-            <TouchableOpacity style={styles.buttonUpdate}>
+            <TouchableOpacity style={styles.buttonUpdate} onPress={updateUserProfile}>
               <Text style={styles.buttonText}>Cập nhật</Text>
             </TouchableOpacity>
           </View>
 
           <View>
-            <TouchableOpacity 
-                onPress={() => navigation.navigate("EditPassWord")}
-            >
-              <Text
-                style={styles.textEditpassword}
-              >
-                Chỉnh sửa mật khẩu
-              </Text>
+            <TouchableOpacity onPress={() => navigation.navigate("EditPassWord")}>
+              <Text style={styles.textEditpassword}>Chỉnh sửa mật khẩu</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -149,6 +206,8 @@ export default function InformationPersonal({ navigation }) {
     </KeyboardAvoidingView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   contain: {
