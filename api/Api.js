@@ -1,4 +1,4 @@
-export const host = "192.168.1.8";
+export const host = "192.168.1.2";
 
 // Account
 
@@ -9,6 +9,15 @@ export const API_EditPassword = `http://${host}:8080/api/v1/auth/change-password
 export const API_forgotPassword = `http://${host}:8080/api/v1/auth/forgot-password`
 
 export const API_logout = `http://${host}:8080/api/v1/auth/logout`
+
+//Get User
+//http://192.168.1.2:8080/api/v1/auth/profile
+export const API_GetUser = `http://${host}:8080/api/v1/auth/profile`
+
+//Update User
+// http://192.168.1.2:8080/api/v1/auth/profile
+export const API_UpdateUser = `http://${host}:8080/api/v1/auth/profile`
+
 
 
 // Movies
@@ -46,6 +55,8 @@ export const API_GetDiscount = `http://${host}:8080/api/v1/orders/`
 
 // Xóa discount  
 export const API_DeleteDiscount = `http://${host}:8080/api/v1/orders/`
+
+
 
 
 

@@ -288,6 +288,8 @@ export default function SelectCombo({ navigation }) {
       showtimeId: route.params.showtimeId,
       // timeLeft
       timeLeft: timeLeft,
+      // rating
+      rating: route.params.rating,
     });
   };
 

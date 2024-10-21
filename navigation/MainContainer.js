@@ -23,6 +23,8 @@ import EditPassWord from '../screens/EditPassWord';
 import ForgetPassword from '../screens/ForgetPassword';
 import Transaction from '../screens/Transaction';
 import TransactionDetail from '../screens/TransactionDetail';
+import MovieDetail from '../screens/MovieDetail';
+import DetailedInvoice from '../screens/DetailedInvoice';
 
 // Tab Navigator
 const homePage = "Trang chủ";
@@ -65,7 +67,7 @@ function MainTabs() {
 
   return (
     <Tab.Navigator
-      initialRouteName={account}
+      initialRouteName={homePage}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
@@ -132,6 +134,8 @@ export default function MainContainer() {
         <Stack.Screen name="ForgetPassword" component={ForgetPassword} />
         <Stack.Screen name="Transaction" component={Transaction} />
         <Stack.Screen name="TransactionDetail" component={TransactionDetail} />
+        <Stack.Screen name="MovieDetail" component={MovieDetail} />
+        <Stack.Screen name="DetailedInvoice" component={DetailedInvoice} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -282,10 +282,12 @@ export default function HomePage({ navigation }) {
                 alignSelf: "center",
                 flex: 1,
               }}
+             
             >
               <Text
-                style={{ color: "#FF7F24", textAlign: "center", marginTop: 5 }}
-              >
+                style={{ color: "#FF7F24", textAlign: "center", marginTop: 5 }} 
+                  onPress={() => navigation.navigate("MovieDetail")}
+                >
                 Xem Tiếp
               </Text>
               <Image

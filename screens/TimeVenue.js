@@ -184,7 +184,8 @@ export default function TimeVenue({ route, navigation }) {
             // Gọi API khi có đủ movieId, date và cinemaId
             response = await axios.get(
               // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
-              API_GetShowtime + `?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
+              API_GetShowtime +
+                `?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
             );
           } else {
             // Gọi API chỉ với movieId nếu thiếu date hoặc cinemaId
@@ -213,7 +214,6 @@ export default function TimeVenue({ route, navigation }) {
   // Hiển thị showtimes
   console.log("Showtimes:", showtimes);
 
-  
   const handleConfirm = () => {
     if (selectedAddress) {
       // Thực hiện các thao tác với địa chỉ đã chọn
@@ -347,73 +347,69 @@ export default function TimeVenue({ route, navigation }) {
               {/* Bên phải: Hiển thị danh sách phòng chiếu và giờ chiếu khi nhấn vào rạp */}
               {selectedCinema === cinemaName && (
                 <View style={styles.showtimeContainer}>
-                  {Object.keys(groupedShowtimes[cinemaName]).map((roomName) => (
-                    <View key={roomName} style={styles.roomContainer}>
-                      {/* Hiển thị tên phòng chiếu */}
-                      <TouchableOpacity
-                        onPress={() =>
-                          setSelectedRoom(
-                            selectedRoom === roomName ? null : roomName
-                          )
-                        } // Nhấn vào để chọn hoặc bỏ chọn phòng
-                        style={styles.roomButton}
-                      >
-                        <Text style={styles.roomText}>{roomName}</Text>
-                      </TouchableOpacity>
+                  {Object.keys(groupedShowtimes[cinemaName])
+                    .sort((a, b) =>
+                      a.localeCompare(b, undefined, { numeric: true })
+                    ) // Sắp xếp roomName theo thứ tự tăng dần
+                    .map((roomName) => (
+                      <View key={roomName} style={styles.roomContainer}>
+                        {/* Hiển thị tên phòng chiếu */}
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSelectedRoom(
+                              selectedRoom === roomName ? null : roomName
+                            )
+                          } // Nhấn vào để chọn hoặc bỏ chọn phòng
+                          style={styles.roomButton}
+                        >
+                          <Text style={styles.roomText}>{roomName}</Text>
+                        </TouchableOpacity>
 
-                      {/* Hiển thị danh sách giờ chiếu khi nhấn vào phòng */}
-                      {selectedRoom === roomName && (
-                        <FlatList
-                          data={chunkArray(
-                            groupedShowtimes[cinemaName][roomName],
-                            6
-                          )} // Chia thành nhóm 6 giờ chiếu
-                          keyExtractor={(item, index) =>
-                            `${cinemaName}-${roomName}-${index}`
-                          }
-                          renderItem={({ item }) => (
-                            <View style={styles.rowContainer}>
-                              {item.map((showtime) => (
-                                <TouchableOpacity
-                                  key={showtime.id}
-                                  style={styles.showtimeButton}
-                                  onPress={() =>
-                                    navigation.navigate("Theatre", {
-                                      showtimeId: showtime.id,                                   
-                                      movieTitle: movie.title,
-                                      cinemaName: cinemaName,
-                                      // Tên phòng chiếu
-                                      roomName: roomName,
-                                      room: showtime.room.id,
-                                      // Thêm giờ chiếu đã chọn vào props chỉ hiển 
-                                      startTime: showtime.startTime,
-                                      // THêm endTime
-                                      endTime: showtime.endTime,
-                                      // Thêm hình ảnh phim
-                                      movieImage: movie.imagePortrait,
-                                      // Hiển thị age
-                                      age: movie.age,
-                                      //   selectedDateFormatted
-                                      selectedDate: selectedDateFormatted,
-                                   
-                                                      
-                                    })
-                                  }
-                                  
-                                >
-                                  {/* Hiển thị giờ chiếu */}
-                                  <Text style={styles.showtimeText}>
-                                    {showtime.startTime.substring(0, 5)}{" "}
-                                    {/* Giờ và phút */}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          )}
-                        />
-                      )}
-                    </View>
-                  ))}
+                        {/* Hiển thị danh sách giờ chiếu khi nhấn vào phòng */}
+                        {selectedRoom === roomName && (
+                          <FlatList
+                            data={chunkArray(
+                              groupedShowtimes[cinemaName][roomName],
+                              6
+                            )} // Chia thành nhóm 6 giờ chiếu
+                            keyExtractor={(item, index) =>
+                              `${cinemaName}-${roomName}-${index}`
+                            }
+                            renderItem={({ item }) => (
+                              <View style={styles.rowContainer}>
+                                {item.map((showtime) => (
+                                  <TouchableOpacity
+                                    key={showtime.id}
+                                    style={styles.showtimeButton}
+                                    onPress={() =>
+                                      navigation.navigate("Theatre", {
+                                        showtimeId: showtime.id,
+                                        movieTitle: movie.title,
+                                        cinemaName: cinemaName,
+                                        roomName: roomName,
+                                        room: showtime.room.id,
+                                        startTime: showtime.startTime,
+                                        endTime: showtime.endTime,
+                                        movieImage: movie.imagePortrait,
+                                        age: movie.age,
+                                        selectedDate: selectedDateFormatted,
+                                        rating: movie.rating,
+                                      })
+                                    }
+                                  >
+                                    {/* Hiển thị giờ chiếu */}
+                                    <Text style={styles.showtimeText}>
+                                      {showtime.startTime.substring(0, 5)}{" "}
+                                      {/* Giờ và phút */}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            )}
+                          />
+                        )}
+                      </View>
+                    ))}
                 </View>
               )}
             </View>
