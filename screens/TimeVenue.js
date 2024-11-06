@@ -166,50 +166,59 @@ export default function TimeVenue({ route, navigation }) {
   console.log("Cinema ID:", cinemaIdflim);
 
   // Hiển thị ngày đã chọn selectedDate định dạng theo "năm-tháng-ngày"
-  const selectedDateFormatted = selectedDate.toISOString().split("T")[0];
-  console.log("Selected Date:", selectedDateFormatted);
+  // const selectedDateFormatted = selectedDate.toISOString().split("T")[0];
+  // console.log("Selected Date:", selectedDateFormatted);
+
+   // Tạo định dạng ngày cho API (yyyy-mm-dd)
+   const formatDateForAPI = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Tự động cập nhật `selectedDateFormatted` khi `selectedDate` thay đổi
+  const [selectedDateFormatted, setSelectedDateFormatted] = useState(
+    selectedDate.toISOString().split("T")[0]
+  );
+  useEffect(() => {
+    setSelectedDateFormatted(selectedDate.toISOString().split("T")[0]);
+  }, [selectedDate]);
+
+  console.log("Ngày đã chọn:", selectedDateFormatted);
+  
 
   // Fetch API showtimes
   useEffect(() => {
     const fetchShowtimes = async () => {
-      // Kiểm tra sự tồn tại của movieId và cinemaId trước khi gọi API
-      if (movieDetails?.id) {
-        const movieId = movieDetails.id;
-        const date = selectedDateFormatted;
-        const cinemaId = cinemaIdflim;
+        if (movieDetails?.id) {
+            const movieId = movieDetails.id;
+            const date = selectedDateFormatted; // This should be the formatted selected date
+            const cinemaId = cinemaIdflim;
 
-        try {
-          let response;
-          if (date && cinemaId) {
-            // Gọi API khi có đủ movieId, date và cinemaId
-            response = await axios.get(
-              // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
-              API_GetShowtime +
-                `?movieId=${movieId}&date=${date}&cinemaId=${cinemaId}`
-            );
-          } else {
-            // Gọi API chỉ với movieId nếu thiếu date hoặc cinemaId
-            response = await axios.get(
-              // `http://192.168.1.7:8080/api/v1/show-times?movieId=${movieId}`
-              API_GetShowtime + `?movieId=${movieId}`
-            );
-          }
+            try {
+                const response = await axios.get(
+                    API_GetShowtime + 
+                    `?movieId=${movieId}&date=${date}${cinemaId ? `&cinemaId=${cinemaId}` : ''}`
+                );
 
-          // Kiểm tra dữ liệu trả về
-          if (response.data.data) {
-            setShowtimes(response.data.data); // Lưu dữ liệu showtimes
-          } else {
-            console.warn("Không có dữ liệu showtimes");
-            setShowtimes([]); // Xóa dữ liệu showtimes cũ nếu không có kết quả
-          }
-        } catch (error) {
-          console.error("Error fetching showtimes:", error);
+                // Check if the data is returned successfully
+                if (response.data.data) {
+                    setShowtimes(response.data.data); // Save showtimes data
+                } else {
+                    console.warn("No showtimes available for the selected date and cinema.");
+                    setShowtimes([]); // Clear previous showtimes if no data
+                }
+            } catch (error) {
+                console.error("Error fetching showtimes:", error);
+            }
         }
-      }
     };
 
-    fetchShowtimes(); // Gọi hàm fetchShowtimes khi các dependency thay đổi
-  }, [movieDetails, selectedDateFormatted, cinemaIdflim]); // Thêm các dependency để theo dõi
+    // Call the function every time movieDetails, selectedDateFormatted, or cinemaIdflim change
+    fetchShowtimes();
+}, [movieDetails, selectedDateFormatted, cinemaIdflim]);
+
 
   // Hiển thị showtimes
   console.log("Showtimes:", showtimes);
@@ -391,7 +400,7 @@ export default function TimeVenue({ route, navigation }) {
                                         startTime: showtime.startTime,
                                         endTime: showtime.endTime,
                                         movieImage: movie.imagePortrait,
-                                        age: movie.age,
+                                        ageRating: movie.ageRating,
                                         selectedDate: selectedDateFormatted,
                                         rating: movie.rating,
                                       })
@@ -577,7 +586,7 @@ export default function TimeVenue({ route, navigation }) {
                     fontSize: 12,
                   }}
                 >
-                  T{movie.age}
+                  {movie.ageRating}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -165,6 +165,11 @@ export default function Theatre({ navigation }) {
         return <View key={`empty-${index}`} style={styles.emptySeat} />;
       }
 
+      // Skip rendering if the price is null
+      if (seat.price === null) {
+        return null;
+      }
+
       if (seat.type === "COUPLE") {
         const nextSeat = array[index + 1];
 
@@ -339,8 +344,6 @@ export default function Theatre({ navigation }) {
     return selectedSeats;
   };
 
-  // Example log
-  console.log("Selected seats: ", getSelectedSeatsInfo());
 
   return (
     <KeyboardAvoidingView
@@ -417,10 +420,10 @@ export default function Theatre({ navigation }) {
               timeSelected: formattedStartTime,
               tableSeats: route.params.roomName,
               movie: route.params.movie,
-              getSelectedSeats: getSelectedSeatsInfo().join(", "),
+              // getSelectedSeats: getSelectedSeatsInfo().join(", "),
               movieImage: route.params.movieImage,
               startTime: formattedStartTime,
-              age: route.params.age,
+              ageRating: route.params.ageRating,
               selectedDate: route.params.selectedDate,
               //showtimeId
               showtimeId: route.params.showtimeId,
@@ -620,9 +623,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  ScreenImg:{
+  ScreenImg: {
     width: 710,
     height: 120,
     borderRadius: 10,
-  }
+  },
 });
