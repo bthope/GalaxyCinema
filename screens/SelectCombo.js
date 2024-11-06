@@ -278,7 +278,7 @@ export default function SelectCombo({ navigation }) {
       // Thêm thông tin combo
       selectedCombos: selectedCombos,
       //age
-      age: route.params.age,
+      ageRating: route.params.ageRating,
       cinemaName: route.params.cinemaName,
       // selectedDate
       selectedDate: route.params.selectedDate,

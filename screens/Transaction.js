@@ -104,7 +104,7 @@ export default function Transaction({ navigation }) {
               onPress={() => navigation.navigate("TransactionDetail", { 
                 imagePortrait: order.showTime.movie.imagePortrait,
                 title: order.showTime.movie.title,
-                age: order.showTime.movie.age,
+                ageRating: order.showTime.movie.ageRating,
                 cinemaName: order.showTime.cinemaName,
                 roomName: order.showTime.room.name,
                 startTime: order.showTime.startTime,
@@ -153,7 +153,7 @@ export default function Transaction({ navigation }) {
                     <Text style={styles.details}>Phim 2D</Text>
                     <TouchableOpacity style={styles.buttonTextAge}>
                       <Text style={styles.movieAge}>
-                        T{order.showTime.movie.age}
+                        {order.showTime.movie.ageRating}
                       </Text>
                     </TouchableOpacity>
                   </View>

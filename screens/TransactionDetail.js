@@ -18,7 +18,7 @@ export default function TransactionDetail({ route, navigation }) {
   const {
     imagePortrait,
     title,
-    age,
+    ageRating,
     cinemaName,
     roomName,
     startTime,
@@ -57,7 +57,7 @@ export default function TransactionDetail({ route, navigation }) {
             <View style={styles.movieDetails}>
               <Text style={styles.details}>Phim 2D {" - "}</Text>
               <TouchableOpacity style={styles.buttonTextAge}>
-                <Text style={styles.movieAge}>T{age}</Text>
+                <Text style={styles.movieAge}>{ageRating}</Text>
               </TouchableOpacity>
             </View>
           </View>

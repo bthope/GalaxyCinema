@@ -23,7 +23,7 @@ const DetailedInvoice = ({navigation}) => {
     movie,
     startTime,
     selectedCombos,
-    age,
+    ageRating,
     cinemaName,
     selectedDate,
     seats,
@@ -80,7 +80,7 @@ const DetailedInvoice = ({navigation}) => {
             <View style={styles.movieDetails}>
               <Text style={styles.details}>Phim 2D {" - "}</Text>
               <TouchableOpacity style={styles.buttonTextAge}>
-                <Text style={styles.movieAge}>T{age}</Text>
+                <Text style={styles.movieAge}>{ageRating}</Text>
               </TouchableOpacity>
             </View>
           </View>

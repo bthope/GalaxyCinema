@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -18,22 +17,23 @@ import { API_CompleteOrder, API_DeleteDiscount, API_GetDiscount } from "../api/A
 import { Modal } from "react-native-paper";
 import { TextInput } from "react-native-gesture-handler";
 import axios from "axios";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import WebView from 'react-native-webview';
 
 // Thành phần RadioButton tùy chỉnh
 const RadioButton = ({ selected, onPress }) => {
   return (
     <TouchableOpacity onPress={onPress}>
       {selected ? (
-        <AntDesign
-          name="checkcircle"
+        <MaterialIcons
+          name="check-circle"
           size={24}
           color="#FFA500"
           style={{ top: 10 }}
         />
       ) : (
-        <AntDesign
-          name="checkcircleo"
+        <MaterialIcons
+          name="radio-button-unchecked"
           size={24}
           color="gray"
           style={{ top: 10 }}
@@ -54,6 +54,8 @@ export default function PayMent({ navigation }) {
 
   // Mở modal khuyến mãi
   const [isModalVisible, setModalVisible] = useState(false);
+  const [showWebView, setShowWebView] = useState(false);
+  const [webViewUrl, setWebViewUrl] = useState('');
 
   const toggleModal = () => {
     setModalVisible(!isModalVisible);
@@ -61,10 +63,8 @@ export default function PayMent({ navigation }) {
 
   // Trạng thái cho phương thức thanh toán được chọn
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    "momo",
+    "ZaloPay",
     "vnPay",
-    "shopeePay",
-    "payoo"
   );
   // Lấy showtimeId từ route.params
   const showtimeId = route.params.showtimeId;
@@ -110,6 +110,76 @@ export default function PayMent({ navigation }) {
   useEffect(() => {
     console.log("orderId:", orderId);
   }, [orderId]);
+  //VnPay payment handler
+  const handleVNPayPayment = async () => {
+    try {
+      const response = await fetch('http://192.168.1.4:8080/api/v1/payment/create_payment', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('VNPay response:', data);
+
+      if (data.status === 'OK' && data.url) {
+        setWebViewUrl(data.url);
+        setShowWebView(true);
+      } else {
+        Alert.alert('Error', 'Failed to initialize VNPay payment');
+      }
+    } catch (error) {
+      console.error('Error creating VNPay payment:', error);
+      Alert.alert('Error', 'Failed to connect to payment service');
+    }
+  };
+
+  // Xử lý khi WebView navigate
+  const handleNavigationStateChange = (navState) => {
+    console.log('Navigation state:', navState);
+    
+    // Kiểm tra URL tồn tại và có giá trị
+    const currentUrl = navState?.url;
+    if (!currentUrl) {
+      console.log('No URL in navigation state');
+      return;
+    }
+
+    try {
+      // Kiểm tra URL có chứa payment_infor
+      if (currentUrl.includes('payment_infor')) {
+        setShowWebView(false);
+        
+        // Xử lý kết quả thanh toán
+        const urlParams = new URLSearchParams(currentUrl.split('?')[1]);
+        const status = urlParams.get('vnp_ResponseCode');
+        
+        if (status === '00') {
+          Alert.alert('Success', 'Payment completed successfully', [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.navigate('DetailedInvoice', {
+                  ...route.params,
+                  finalAmount: finalAmount || route.params.total,
+                });
+              },
+            },
+          ]);
+        } else {
+          Alert.alert('Failed', 'Payment was not successful');
+        }
+      }
+    } catch (error) {
+      console.error('Error processing navigation:', error);
+    }
+  };
+
+
+
+
   // Hàm hủy voucher code
   const cancelVoucher = async () => {
     if (!accessToken || !orderId) {
@@ -190,6 +260,10 @@ export default function PayMent({ navigation }) {
   // fetch API để gửi thông tin thanh toán
   const handlePayment = async () => {
     // Ensure the access token and orderId are available
+    if (selectedPaymentMethod === 'vnPay') {
+      await handleVNPayPayment();
+      return;
+    }
     if (!accessToken) {
       Alert.alert("Error", "Access token is missing.");
       return;
@@ -247,7 +321,7 @@ export default function PayMent({ navigation }) {
            
             startTime: route.params.startTime,
             selectedCombos: route.params.selectedCombos,
-            age: route.params.age,
+            ageRating: route.params.ageRating,
             cinemaName: route.params.cinemaName,
             selectedDate: route.params.selectedDate,
             seats: route.params.seats,
@@ -288,9 +362,6 @@ export default function PayMent({ navigation }) {
 
   // Lấy giá trị timeLeft  timeLeft: timeLeft, từ route.params
   const [timeLeft, setTimeLeft] = useState(route.params?.timeLeft);
-
-
- 
 
     // Load giá trị thời gian đã lưu từ AsyncStorage (nếu cần)
     const loadTimeLeft = async () => {
@@ -380,7 +451,7 @@ export default function PayMent({ navigation }) {
             <Text style={styles.infoText}>2D phụ đề</Text>
             {/* age */}
             <TouchableOpacity style={styles.buttonTextAge}>
-              <Text style={styles.movieAge}>T{route.params.age}</Text>
+              <Text style={styles.movieAge}>{route.params.ageRating}</Text>
             </TouchableOpacity>
           </View>
           <View style={{ flexDirection: "row" }}>
@@ -427,13 +498,13 @@ export default function PayMent({ navigation }) {
       <View style={styles.contentPayMent}>
         <View style={styles.contentTabPayMent}>
           <View style={styles.contentTab2PayMent}>
-            <Image source={require("../img/momo.png")} style={styles.logo} />
+            <Image source={require("../img/zalopay.png")} style={styles.logo} />
             <Text style={styles.textPayMent}>Ví MoMo</Text>
           </View>
           <View>
             <RadioButton
-              selected={selectedPaymentMethod === "momo"}
-              onPress={() => setSelectedPaymentMethod("momo")}
+              selected={selectedPaymentMethod === "ZaloPay"}
+              onPress={() => setSelectedPaymentMethod("ZaloPay")}
             />
           </View>
         </View>
@@ -441,7 +512,7 @@ export default function PayMent({ navigation }) {
         <View style={styles.contentTabPayMent}>
           <View style={styles.contentTab2PayMent}>
             <Image source={require("../img/VNPay.jpg")} style={styles.logo} />
-            <Text style={styles.textPayMent}>Ví MoMo</Text>
+            <Text style={styles.textPayMent}>VNPay</Text>
           </View>
           <View>
             <RadioButton
@@ -451,7 +522,7 @@ export default function PayMent({ navigation }) {
           </View>
         </View>
 
-        <View style={styles.contentTabPayMent}>
+        {/* <View style={styles.contentTabPayMent}>
           <View style={styles.contentTab2PayMent}>
             <Image
               source={require("../img/shopeePay.png")}
@@ -467,9 +538,9 @@ export default function PayMent({ navigation }) {
               onPress={() => setSelectedPaymentMethod("shopeePay")}
             />
           </View>
-        </View>
+        </View> */}
 
-        <View style={styles.contentTabPayMent}>
+        {/* <View style={styles.contentTabPayMent}>
           <View style={styles.contentTab2PayMent}>
             <Image source={require("../img/Payoo.png")} style={styles.logo} />
             <Text style={styles.textPayMent}>
@@ -482,7 +553,7 @@ export default function PayMent({ navigation }) {
               onPress={() => setSelectedPaymentMethod("payoo")}
             />
           </View>
-        </View>
+        </View> */}
         <View style={styles.contentFooter}>
           <View style={styles.contentFooterLeft}>
             <Text style={styles.infoText}>Tổng cộng:</Text>
@@ -557,6 +628,38 @@ export default function PayMent({ navigation }) {
           </View>
         </View>
       </Modal>
+      {/* Giao diện thanh toán VNPay */}
+      {/* WebView Modal */}
+      {showWebView && webViewUrl ? (
+        <View style={styles.webViewContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              onPress={() => setShowWebView(false)}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>×</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Payment</Text>
+          </View>
+
+          <WebView
+            source={{ uri: webViewUrl }}
+            style={styles.webView}
+            onNavigationStateChange={handleNavigationStateChange}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.warn('WebView error:', nativeEvent);
+              Alert.alert('Error', 'Failed to load payment page');
+            }}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            scalesPageToFit={true}
+          />
+        </View>
+      ) : null}
+
+
     </KeyboardAvoidingView>
   );
 }
@@ -676,7 +779,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 10,
-    top: 55,
+    top: 220,
     backgroundColor: "white",
     height: 80,
     left: -10,
@@ -687,7 +790,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   button1: {
-    height: 45,
+    height: 40,
     justifyContent: "space-around",
     alignItems: "center",
     borderRadius: 5,
@@ -809,4 +912,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "red",
   },
+  webViewContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#fff',
+    zIndex: 999,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: '#000',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginRight: 40,
+  },
+  webView: {
+    flex: 1,
+  },
+  paymentButton: {
+    backgroundColor: '#FFA500',
+    padding: 15,
+    margin: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  paymentButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+
 });
