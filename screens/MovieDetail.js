@@ -40,7 +40,7 @@ import {
             </View>
             <View style={styles.buttonContainerAge}>
               <TouchableOpacity style={styles.buttonTextAge}>
-                <Text style={styles.movieAge}>T{item.age}</Text>
+                <Text style={styles.movieAge}>{item.ageRating}</Text>
               </TouchableOpacity>
             </View>
           </View>

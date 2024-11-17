@@ -13,7 +13,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_CompleteOrder, API_DeleteDiscount, API_GetDiscount } from "../api/Api";
+import { API_CompleteOrder, API_DeleteDiscount, API_GetDiscount, API_VNPay, API_ZaloPay } from "../api/Api";
 import { Modal } from "react-native-paper";
 import { TextInput } from "react-native-gesture-handler";
 import axios from "axios";
@@ -71,6 +71,7 @@ export default function PayMent({ navigation }) {
   console.log("showtimeId", showtimeId);
   const [accessToken, setAccessToken] = useState(null);
   const [seatIds, setSeatIds] = useState([0]);
+  const [transId, setTransId] = useState(null);
   // Lấy accessToken từ AsyncStorage
   useEffect(() => {
     const fetchAccessToken = async () => {
@@ -110,10 +111,66 @@ export default function PayMent({ navigation }) {
   useEffect(() => {
     console.log("orderId:", orderId);
   }, [orderId]);
+
+   //ZaloPay payment handler
+   const handleZaloPayPayment = async () => {
+    try {
+      const response = await axios.post(
+         API_ZaloPay,
+        {
+          orderId: orderId
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+  
+      console.log('ZaloPay response:', response.data);
+  
+      if (response.data.data && response.data.data.orderUrl) {
+        setWebViewUrl(response.data.data.orderUrl);
+        setTransId(response.data.data.transId);
+        setShowWebView(true);
+      } else {
+        Alert.alert('Error', 'Failed to initialize ZaloPay payment');
+      }
+    } catch (error) {
+      console.error('Error creating ZaloPay payment:', error);
+      Alert.alert('Error', 'Failed to connect to ZaloPay payment service');
+    }
+  };
+
+   // Add function to check ZaloPay payment status
+const checkZaloPayStatus = async (transId) => {
+  try {
+    const response = await axios.get(
+        API_ZaloPay + `?transId=${transId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error checking ZaloPay status:', error);
+    throw error;
+  }
+};
+
+
   //VnPay payment handler
   const handleVNPayPayment = async () => {
     try {
-      const response = await fetch('http://192.168.1.4:8080/api/v1/payment/create_payment', {
+      const response = await fetch(
+        // `http://192.168.1.5:8080/api/v1/payment/create_payment/${orderId}`
+        API_VNPay + orderId,
+        {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -137,47 +194,74 @@ export default function PayMent({ navigation }) {
   };
 
   // Xử lý khi WebView navigate
-  const handleNavigationStateChange = (navState) => {
-    console.log('Navigation state:', navState);
-    
-    // Kiểm tra URL tồn tại và có giá trị
+  // Cập nhật hàm xử lý WebView navigation
+  const handleNavigationStateChange = async (navState) => {
     const currentUrl = navState?.url;
     if (!currentUrl) {
       console.log('No URL in navigation state');
       return;
     }
-
+  
     try {
-      // Kiểm tra URL có chứa payment_infor
+      // Xử lý callback từ VNPay
       if (currentUrl.includes('payment_infor')) {
         setShowWebView(false);
         
-        // Xử lý kết quả thanh toán
         const urlParams = new URLSearchParams(currentUrl.split('?')[1]);
         const status = urlParams.get('vnp_ResponseCode');
         
         if (status === '00') {
-          Alert.alert('Success', 'Payment completed successfully', [
-            {
-              text: 'OK',
-              onPress: () => {
+          confirmPayment().then(() => {
+            navigation.navigate('DetailedInvoice', {
+              ...route.params,
+              finalAmount: finalAmount || route.params.total,
+            });
+          }).catch((error) => {
+            console.error('Error confirming payment:', error);
+            Alert.alert('Error', 'Payment was successful but confirmation failed. Please contact support.');
+          });
+        } else {
+          Alert.alert('Failed', 'VNPay payment was not successful');
+        }
+      }
+      
+      // Xử lý callback từ ZaloPay
+      if (currentUrl.includes('close')) { // Adjust this based on ZaloPay's actual return URL pattern
+        setShowWebView(false);
+        
+        if (transId) {
+          try {
+            // Kiểm tra trạng thái thanh toán ZaloPay
+            const statusResponse = await checkZaloPayStatus(transId);
+            
+            if (statusResponse.returncode === 1) { // Assume 1 is success code, adjust as needed
+              confirmPayment().then(() => {
                 navigation.navigate('DetailedInvoice', {
                   ...route.params,
                   finalAmount: finalAmount || route.params.total,
                 });
-              },
-            },
-          ]);
-        } else {
-          Alert.alert('Failed', 'Payment was not successful');
+              }).catch((error) => {
+                console.error('Error confirming ZaloPay payment:', error);
+                Alert.alert('Error', 'Payment was successful but confirmation failed. Please contact support.');
+              });
+            } else {
+              Alert.alert('Failed', 'ZaloPay payment was not successful');
+            }
+          } catch (error) {
+            console.error('Error checking ZaloPay payment status:', error);
+            Alert.alert('Error', 'Failed to verify payment status. Please contact support.');
+          }
         }
       }
     } catch (error) {
       console.error('Error processing navigation:', error);
+      Alert.alert('Error', 'An error occurred while processing the payment.');
+    } finally {
+      // Reset transId after processing
+      setTransId(null);
     }
   };
-
-
+  
 
 
   // Hàm hủy voucher code
@@ -258,11 +342,10 @@ export default function PayMent({ navigation }) {
   };
 
   // fetch API để gửi thông tin thanh toán
-  const handlePayment = async () => {
+  const confirmPayment  = async () => {
     // Ensure the access token and orderId are available
     if (selectedPaymentMethod === 'vnPay') {
       await handleVNPayPayment();
-      return;
     }
     if (!accessToken) {
       Alert.alert("Error", "Access token is missing.");
@@ -273,33 +356,29 @@ export default function PayMent({ navigation }) {
       Alert.alert("Error", "Order ID is missing.");
       return;
     }
-
-    // API URL with the orderId
-    // const API_CompleteOrder = `http://192.168.1.7:8080/api/v1/orders/${orderId}/complete`;
-
     // Prepare the payment data
     const paymentData = {
-      showTimeId: showtimeId, // Replace with actual showtimeId
-      seatIds: [0], // Replace with actual selected seat IDs if necessary
+      showTimeId: showtimeId, 
+      seatIds: [0],
     };
 
     try {
       // Make the PUT request to complete the order
       const response = await fetch(API_CompleteOrder + orderId + "/complete", {
-        method: "PUT", // Use PUT method as requested
+        method: "PUT", 
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`, // Use the accessToken in headers
+          Authorization: `Bearer ${accessToken}`, 
         },
-        body: JSON.stringify(paymentData), // Convert paymentData to JSON
+        body: JSON.stringify(paymentData), 
       });
 
       // Check if the response is okay
       if (!response.ok) {
         // Handle non-200 responses
-        const errorMessage = await response.text(); // Get the error message from the response
-        console.error("Payment error response:", errorMessage); // Log the error response
-        throw new Error("Payment failed: " + errorMessage); // Throw a detailed error
+        const errorMessage = await response.text(); 
+        console.error("Payment error response:", errorMessage); 
+        throw new Error("Payment failed: " + errorMessage); 
       }
 
       // Parse the JSON response
@@ -312,38 +391,66 @@ export default function PayMent({ navigation }) {
       // Xóa đi thông tin đếm ngược
       setTimeLeft(null);
 
-      // Show success alert and navigate back
-      Alert.alert("Thành công", "Thanh toán hoàn tất!", [
-        {
-          text: "OK",
-          onPress: () => navigation.navigate("DetailedInvoice",{
-            movieImage: route.params.movieImage,
-           
-            startTime: route.params.startTime,
-            selectedCombos: route.params.selectedCombos,
-            ageRating: route.params.ageRating,
-            cinemaName: route.params.cinemaName,
-            selectedDate: route.params.selectedDate,
-            seats: route.params.seats,
-            total: route.params.total,
-            name: route.params.name,
-            mall: route.params.mall,
-            timeSelected: route.params.timeSelected,
-            tableSeats: route.params.tableSeats,
-            getSelectedSeats: route.params.getSelectedSeats,
-            rating: route.params.rating,
-            // Hiển thị giá finalAmount
-            finalAmount: finalAmount !== null && finalAmount !== 0
-              ? finalAmount
-              : route.params.total,
-          }), // Navigate back to MainTabs
-        },
-      ]);
+      // Chuyển hướng sang trang DetailedInvoice
+      navigation.navigate("DetailedInvoice",{
+       
+          movieImage: route.params.movieImage,
+         
+          startTime: route.params.startTime,
+          selectedCombos: route.params.selectedCombos,
+          ageRating: route.params.ageRating,
+          cinemaName: route.params.cinemaName,
+          selectedDate: route.params.selectedDate,
+          seats: route.params.seats,
+          total: route.params.total,
+          name: route.params.name,
+          mall: route.params.mall,
+          timeSelected: route.params.timeSelected,
+          tableSeats: route.params.tableSeats,
+          getSelectedSeats: route.params.getSelectedSeats,
+          rating: route.params.rating,
+          // Hiển thị giá finalAmount
+          finalAmount: finalAmount !== null && finalAmount !== 0
+            ? finalAmount
+            : route.params.total,
+      });
     } catch (error) {
       console.error("Payment error:", error); // Log the error
       Alert.alert("Error", "Payment could not be processed. Please try again."); // Show error alert
     }
   };
+
+  // Hàm xử lý thanh toán chính
+const handlePayment = async () => {
+  if (!accessToken) {
+    Alert.alert("Error", "Access token is missing.");
+    return;
+  }
+
+  if (!orderId) {
+    Alert.alert("Error", "Order ID is missing.");
+    return;
+  }
+
+  if (selectedPaymentMethod === 'vnPay') {
+    await handleVNPayPayment();
+    return;
+  }
+
+  if (selectedPaymentMethod === 'ZaloPay') {
+    await handleZaloPayPayment();
+    return;
+  }
+
+  // Nếu không phải VNPay, thực hiện xác nhận thanh toán ngay
+  try {
+    await confirmPayment();
+    Alert.alert("Thành công", "Thanh toán hoàn tất!");
+  } catch (error) {
+    console.error("Payment error:", error);
+    Alert.alert("Error", "Payment could not be processed. Please try again.");
+  }
+};
 
   // // Lưu giá trị của Tổng cộng và ghế đã chọn và AsyncStorage  {route.params.total.toLocaleString("vi-VN")}đ và {route.params.getSelectedSeats} vào AsyncStorage
   // useEffect(() => {
@@ -522,38 +629,6 @@ export default function PayMent({ navigation }) {
           </View>
         </View>
 
-        {/* <View style={styles.contentTabPayMent}>
-          <View style={styles.contentTab2PayMent}>
-            <Image
-              source={require("../img/shopeePay.png")}
-              style={styles.logo}
-            />
-            <Text style={styles.textPayMent}>
-              Ví shopeePay - Mã: SPPCINE08 Giảm 10K cho đơn hàng 100K
-            </Text>
-          </View>
-          <View>
-            <RadioButton
-              selected={selectedPaymentMethod === "shopeePay"}
-              onPress={() => setSelectedPaymentMethod("shopeePay")}
-            />
-          </View>
-        </View> */}
-
-        {/* <View style={styles.contentTabPayMent}>
-          <View style={styles.contentTab2PayMent}>
-            <Image source={require("../img/Payoo.png")} style={styles.logo} />
-            <Text style={styles.textPayMent}>
-              HSBC/Payoo - ATM/VISA/MASTER/JCB/QRCORE
-            </Text>
-          </View>
-          <View>
-            <RadioButton
-              selected={selectedPaymentMethod === "payoo"}
-              onPress={() => setSelectedPaymentMethod("payoo")}
-            />
-          </View>
-        </View> */}
         <View style={styles.contentFooter}>
           <View style={styles.contentFooterLeft}>
             <Text style={styles.infoText}>Tổng cộng:</Text>
@@ -825,7 +900,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "end",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Nền mờ cho modal
+    backgroundColor: "rgba(0, 0, 0, 0.5)", 
   },
   modalContent: {
     width: "100%",
@@ -833,7 +908,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     height: 500,
-    elevation: 5, // Đổ bóng cho modal
+    elevation: 5, 
     flexDirection: "column",
   },
   voucherRowCode: {
@@ -853,9 +928,7 @@ const styles = StyleSheet.create({
     padding: 7,
     marginBottom: 15,
     width: "70%",
-    // Giữa cho TextInput cố định khi nhập nội dung
     textAlignVertical: "center",
-    // Khi nhập nội dung layout không bị thay đổi
   },
   applyButton: {
     backgroundColor: "#28A745",
