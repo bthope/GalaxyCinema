@@ -1,4 +1,4 @@
-export const host = "192.168.1.4";
+export const host = "192.168.42.229";
 
 // Account
 
@@ -11,11 +11,9 @@ export const API_forgotPassword = `http://${host}:8080/api/v1/auth/forgot-passwo
 export const API_logout = `http://${host}:8080/api/v1/auth/logout`
 
 //Get User
-//http://192.168.1.2:8080/api/v1/auth/profile
 export const API_GetUser = `http://${host}:8080/api/v1/auth/profile`
 
 //Update User
-// http://192.168.1.2:8080/api/v1/auth/profile
 export const API_UpdateUser = `http://${host}:8080/api/v1/auth/profile`
 
 
@@ -55,6 +53,14 @@ export const API_GetDiscount = `http://${host}:8080/api/v1/orders/`
 
 // Xóa discount  
 export const API_DeleteDiscount = `http://${host}:8080/api/v1/orders/`
+
+// ZaloPay
+export const API_ZaloPay = `http://${host}:8080/api/admin/v1/payments/zalo-pay`
+export const API_ZaloPayStatus = `http://${host}:8080/api/admin/v1/payments/zalo-pay`
+
+// Vnpay
+export const API_VNPay = `http://${host}:8080/api/v1/payment/create_payment/`
+
 
 
 
