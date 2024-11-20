@@ -23,6 +23,7 @@ export default function SelectCombo({ navigation }) {
   const route = useRoute();
   const [combos, setCombos] = useState([]); // State to store fetched combos
   const [selectedCombos, setSelectedCombos] = useState({});
+  const [promotionalPrices, setPromotionalPrices] = useState({});
 
   useEffect(() => {
     // Fetch combo data from the API
@@ -77,67 +78,6 @@ export default function SelectCombo({ navigation }) {
   useEffect(() => {
     console.log("accessToken:", accessToken);
   }, [accessToken]);
-
-  // // Hủy đơn hàng sau khi hết thời gian giữ ghế 6:00
-  // const [timeLeft, setTimeLeft] = useState(10);
-  //  // Hàm gọi API xóa order
-  //  const deleteOrder = async () => {
-  //   if (!accessToken || !orderId) {
-  //     Alert.alert("Error", "Access token or order ID is missing.");
-  //     return;
-  //   }
-
-  //   const url = `http://192.168.1.8:8080/api/v1/orders/${orderId}`;
-
-  //   try {
-  //     const response = await fetch(url, {
-  //       method: "DELETE",
-  //       headers: {
-  //         Authorization: `Bearer ${accessToken}`,
-  //         "Content-Type": "application/json",
-  //       },
-  //     });
-
-  //     if (response.ok) {
-  //       console.log("Order deleted successfully.");
-
-  //       // Thông báo thành công và điều hướng về MainTabs
-  //       Alert.alert("Success", "Order deleted successfully.", [
-  //         { text: "OK", onPress: () => navigation.navigate("MainTabs") },
-  //       ]);
-  //        // reset lại tất cả các state
-
-  //     } else {
-  //       const errorData = await response.json();
-  //       console.error("Failed to delete order:", errorData);
-  //       Alert.alert("Error", "Failed to delete order.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error deleting order:", error);
-  //     Alert.alert("Error", "An error occurred while deleting the order.");
-  //   }
-  // };
-  // // Đếm ngược thời gian
-  // useEffect(() => {
-  //   if (timeLeft === 0) {
-  //     // Khi hết thời gian, gọi API delete
-  //     deleteOrder();
-  //     return;
-  //   }
-
-  //   const timer = setTimeout(() => {
-  //     setTimeLeft(timeLeft - 1);
-  //   }, 1000); // Giảm 1 giây sau mỗi 1000ms (1 giây)
-
-  //   return () => clearTimeout(timer); // Hủy bỏ timer khi component bị unmount
-  // }, [timeLeft]);
-
-  // // Hàm format thời gian
-  // const formatTime = (seconds) => {
-  //   const minutes = Math.floor(seconds / 60);
-  //   const remainingSeconds = seconds % 60;
-  //   return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
-  // };
 
   // Hủy đơn hàng sau khi hết thời gian giữ ghế 6:00
   const [timeLeft, setTimeLeft] = useState(360);
@@ -199,7 +139,6 @@ export default function SelectCombo({ navigation }) {
   const updateProductQuantity = async (id, quantity) => {
     try {
       const response = await axios.put(
-        // `http://192.168.1.8:8080/api/v1/orders/${orderId}/products`,
         API_UpdateProduct + orderId + "/products",
         {
           products: [{ id: id, quantity: quantity }],
@@ -211,13 +150,21 @@ export default function SelectCombo({ navigation }) {
           },
         }
       );
-      console.log("Product quantity updated:", response.data);
-      // Lưu orderId vào AsyncStorage
+      
+      // Update promotional price if available in the response
+      if (response.data.data.finalAmount) {
+        setPromotionalPrices(prev => ({
+          ...prev,
+          [id]: response.data.data.finalAmount
+        }));
+      }
+      
       await AsyncStorage.setItem("orderId", response.data.data.id.toString());
     } catch (error) {
       console.error("Error updating product quantity:", error);
     }
   };
+
 
   // Increase quantity
   const increaseQuantity = (id) => {
@@ -226,10 +173,10 @@ export default function SelectCombo({ navigation }) {
       ...prevSelectedCombos,
       [id]: newQuantity,
     }));
-
-    // Call the API to update the quantity
     updateProductQuantity(id, newQuantity);
   };
+
+
 
   // Decrease quantity
   const decreaseQuantity = (id) => {
@@ -237,6 +184,9 @@ export default function SelectCombo({ navigation }) {
     if (newQuantity <= 0) {
       const { [id]: _, ...rest } = selectedCombos;
       setSelectedCombos(rest);
+      // Clear promotional price when quantity reaches 0
+      const { [id]: __, ...restPromotional } = promotionalPrices;
+      setPromotionalPrices(restPromotional);
     } else {
       setSelectedCombos((prevSelectedCombos) => ({
         ...prevSelectedCombos,
@@ -244,13 +194,13 @@ export default function SelectCombo({ navigation }) {
       }));
     }
 
-    // Call the API to update the quantity
     if (newQuantity > 0) {
       updateProductQuantity(id, newQuantity);
     } else {
-      updateProductQuantity(id, 0); // Optionally handle zero quantities if needed
+      updateProductQuantity(id, 0);
     }
   };
+
 
   const calculateTotal = () => {
     return Object.keys(selectedCombos).reduce((total, id) => {
@@ -259,7 +209,18 @@ export default function SelectCombo({ navigation }) {
     }, 0);
   };
 
-  const totalWithCombos = route.params.total + calculateTotal();
+  // Calculate final total considering promotional prices
+  const calculateFinalTotal = () => {
+    // If there are any promotional prices, use them
+    if (Object.keys(promotionalPrices).length > 0) {
+      return Object.values(promotionalPrices).reduce((sum, price) => sum + price, 0);
+    }
+    // Otherwise, use the regular total
+    return route.params.total + calculateTotal();
+  };
+
+
+  const totalWithCombos = calculateFinalTotal();
 
   // fetch API để gửi thông tin thanh toán
   const handleCombo = async () => {
@@ -371,7 +332,7 @@ export default function SelectCombo({ navigation }) {
           <View>
             <Text style={styles.seatText}>{`${
               route.params.seats.length
-            }x ghế ${route.params.seats.join(", ")}`}</Text>
+            }x ghế ${route.params.seats}`}</Text>
             <Text style={styles.toltalText}>
               Tổng cộng: {totalWithCombos.toLocaleString("vi-VN")}đ
             </Text>

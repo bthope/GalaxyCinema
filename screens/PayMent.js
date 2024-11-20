@@ -577,7 +577,7 @@ const handlePayment = async () => {
         <View style={styles.contentSeat}>
           <Text style={styles.infoText}>{`${
               route.params.seats.length
-            }x ghế ${route.params.seats.join(", ")}`}</Text>
+            }x ghế ${route.params.seats}`}</Text>
           <Text style={styles.infoText}>
             {route.params.total.toLocaleString("vi-VN")}đ
           </Text>
