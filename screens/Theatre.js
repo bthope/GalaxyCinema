@@ -167,7 +167,7 @@ const handleContinue = async () => {
     }
 
       // Tính toán các giá trị
-      const formattedSeats = selectedSeatsData.map(seat => seat.name).join(", ");
+      const formattedSeats = selectedSeatsData.map(seat => seat.name);
       const originalTotal = selectedSeatsData.reduce((total, seat) => total + seat.price, 0);
       const finalAmount = response.data.data.finalAmount;
       const hasDiscount = finalAmount && finalAmount !== originalTotal;

@@ -575,9 +575,10 @@ const handlePayment = async () => {
       <Text style={styles.infoTextInfomation}>Thông tin giao dịch</Text>
       <View style={styles.contentInformation}>
         <View style={styles.contentSeat}>
-          <Text style={styles.infoText}>{`${
-              route.params.seats.length
-            }x ghế ${route.params.seats}`}</Text>
+          <Text style={styles.infoText}> {" "}
+              {`${route.params.seats.length}x ghế ${route.params.seats.join(
+                ", "
+              )}`}</Text>
           <Text style={styles.infoText}>
             {route.params.total.toLocaleString("vi-VN")}đ
           </Text>

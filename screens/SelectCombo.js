@@ -150,21 +150,20 @@ export default function SelectCombo({ navigation }) {
           },
         }
       );
-      
+
       // Update promotional price if available in the response
       if (response.data.data.finalAmount) {
-        setPromotionalPrices(prev => ({
+        setPromotionalPrices((prev) => ({
           ...prev,
-          [id]: response.data.data.finalAmount
+          [id]: response.data.data.finalAmount,
         }));
       }
-      
+
       await AsyncStorage.setItem("orderId", response.data.data.id.toString());
     } catch (error) {
       console.error("Error updating product quantity:", error);
     }
   };
-
 
   // Increase quantity
   const increaseQuantity = (id) => {
@@ -175,8 +174,6 @@ export default function SelectCombo({ navigation }) {
     }));
     updateProductQuantity(id, newQuantity);
   };
-
-
 
   // Decrease quantity
   const decreaseQuantity = (id) => {
@@ -201,7 +198,6 @@ export default function SelectCombo({ navigation }) {
     }
   };
 
-
   const calculateTotal = () => {
     return Object.keys(selectedCombos).reduce((total, id) => {
       const combo = combos.find((item) => item.id.toString() === id);
@@ -213,12 +209,14 @@ export default function SelectCombo({ navigation }) {
   const calculateFinalTotal = () => {
     // If there are any promotional prices, use them
     if (Object.keys(promotionalPrices).length > 0) {
-      return Object.values(promotionalPrices).reduce((sum, price) => sum + price, 0);
+      return Object.values(promotionalPrices).reduce(
+        (sum, price) => sum + price,
+        0
+      );
     }
     // Otherwise, use the regular total
     return route.params.total + calculateTotal();
   };
-
 
   const totalWithCombos = calculateFinalTotal();
 
@@ -330,9 +328,12 @@ export default function SelectCombo({ navigation }) {
 
         <View style={styles.footer}>
           <View>
-            <Text style={styles.seatText}>{`${
-              route.params.seats.length
-            }x ghế ${route.params.seats}`}</Text>
+            <Text style={styles.seatText}>
+              {" "}
+              {`${route.params.seats.length}x ghế ${route.params.seats.join(
+                ", "
+              )}`}
+            </Text>
             <Text style={styles.toltalText}>
               Tổng cộng: {totalWithCombos.toLocaleString("vi-VN")}đ
             </Text>

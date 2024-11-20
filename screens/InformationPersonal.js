@@ -134,7 +134,7 @@ export default function InformationPersonal({ navigation }) {
       </View>
       <View style={styles.contentAvt}>
         <View>
-          <Image source={require("../img/user.png")} style={styles.imgUser} />
+          <Image source={require("../img/person.jpg")} style={styles.imgUser} />
           <Image source={require("../img/photo.png")} style={styles.imgPhoto} />
         </View>
 

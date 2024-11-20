@@ -25,6 +25,7 @@ import Transaction from '../screens/Transaction';
 import TransactionDetail from '../screens/TransactionDetail';
 import MovieDetail from '../screens/MovieDetail';
 import DetailedInvoice from '../screens/DetailedInvoice';
+import MemberCode from '../screens/MemberCode';
 
 // Tab Navigator
 const homePage = "Trang chủ";
@@ -136,6 +137,7 @@ export default function MainContainer() {
         <Stack.Screen name="TransactionDetail" component={TransactionDetail} />
         <Stack.Screen name="MovieDetail" component={MovieDetail} />
         <Stack.Screen name="DetailedInvoice" component={DetailedInvoice} />
+        <Stack.Screen name="MemberCode" component={MemberCode} />
       </Stack.Navigator>
     </NavigationContainer>
   );
