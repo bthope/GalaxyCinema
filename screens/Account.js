@@ -139,7 +139,7 @@ const removeUserData = async () => {
         <View style={styles.content}>
          
           <View style={styles.infoContent}>
-            <Image source={require('../img/person.png')} style={styles.imgPerson} />
+            <Image source={require('../img/person.jpg')} style={styles.imgPerson} />
             <View style={styles.infoBettewConten}>
               <View style={styles.infoname}>
                 <Image source={require('../img/medal.png')} style={styles.imgName} />
@@ -151,7 +151,9 @@ const removeUserData = async () => {
               </View>
             </View>
             <View style={styles.infoRightcontent}>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('MemberCode')}
+              >
                 <Image source={require('../img/pr.jpg')} style={styles.imgQR} />
                 <Text style={{ color: '#FFA500', textAlign: 'center', marginTop: 5, width: 100, right:20 }}>Mã thành viên</Text>
               </TouchableOpacity>
@@ -349,9 +351,10 @@ const styles = StyleSheet.create({
   imgPerson: {
     width: 70,
     height: 70,
-    resizeMode: "contain",
+    resizeMode: "cover",
     left: 10,
     top: 10,
+    borderRadius: 35,
   },
   textinforname: {
     fontSize: 18,

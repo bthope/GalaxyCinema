@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import QRCode from "react-native-qrcode-svg"; // Thêm QRCode component nếu chưa có
+import Barcode from "@kichiyaki/react-native-barcode-generator"; // Replace QRCode with Barcode
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function TransactionDetail({ route, navigation }) {
@@ -78,14 +78,20 @@ export default function TransactionDetail({ route, navigation }) {
           </Text>
         </View>
 
-        {/* QR Code */}
-        <View style={styles.qrContainer}>
-          <QRCode value="https://example.com/ticket/764341" size={100} />
+        {/* Barcode */}
+        <View style={styles.barcodeContainer}>
+          <Barcode
+            value={code}
+            format="CODE128"
+            width={2}
+            height={50}
+            textStyle={styles.barcodeText}
+          />
         </View>
 
         <View style={styles.contentSeact}>
           <Text style={styles.detailsSeat}>
-          Ghế: {seatName.join(", ")}
+            Ghế: {seatName.join(", ")}
           </Text>
         </View>
 
@@ -93,7 +99,6 @@ export default function TransactionDetail({ route, navigation }) {
         <View style={styles.infoContainerTicket}>
           <Text style={styles.details}>Mã vé: {code}</Text>
           <Text style={styles.detailsRating}>Stars: {rating}</Text>
-          {/* Hiển thị thêm totalPriceAs */}
           <Text style={styles.details}>
             Tổng Cộng: {finalAmount.toLocaleString("vi-VN")}đ
           </Text>
@@ -264,4 +269,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     width: 50,
   },
+  barcodeContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+    top: 34,
+  },
+  barcodeText: {
+    fontSize: 12,
+    marginTop: 5,
+    width: 150,
+  },
+
 });
