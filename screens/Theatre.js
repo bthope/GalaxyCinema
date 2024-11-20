@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   Image,
+  Alert,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
@@ -29,34 +30,16 @@ export default function Theatre({ navigation }) {
   const [roomLayout, setRoomLayout] = useState(null);
   const showtimeId = route.params.showtimeId;
   const [seatPrices, setSeatPrices] = useState({ NORMAL: 0, COUPLE: 0 });
+  const [selectedSeatsData, setSelectedSeatsData] = useState([]); // New state to store seat data
+  const [accessToken, setAccessToken] = useState(null);
 
   // Calculate total based on seat type prices
   const calculateTotal = () => {
-    let total = 0;
-
-    // Loop through each selected seat
-    seats.forEach((seatId) => {
-      const seat = findSeatById(seatId); // Find the seat object by its ID
-      if (seat) {
-        total += seat.price; // Use the price property from the seat data
-        if (seat.type === "COUPLE") {
-          // If it's a couple seat, also add the price of the paired seat
-          const pairSeat = seat.groupSeats.find((groupSeat) =>
-            roomLayout.rows[seat.rowIndex]?.seats.find(
-              (s) => s.columnIndex === groupSeat.columnIndex
-            )
-          );
-          if (pairSeat) {
-            const pairedSeat = findSeatById(pairSeat.columnIndex); // Assuming columnIndex gives us the paired seat ID
-            if (pairedSeat) {
-              total += pairedSeat.price; // Add the paired seat's price
-            }
-          }
-        }
-      }
-    });
-
-    return total; // Return the calculated total
+    // If finalAmount exists, use it instead of calculating from seats
+    if (finalAmount !== null) {
+      return finalAmount;
+    }
+    return selectedSeatsData.reduce((total, seat) => total + seat.price, 0);
   };
 
   const findSeatById = (seatId) => {
@@ -70,16 +53,26 @@ export default function Theatre({ navigation }) {
   };
 
   useEffect(() => {
+    const fetchAccessToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("accessToken");
+        setAccessToken(token || "No token found");
+      } catch (error) {
+        console.error("Error retrieving accessToken:", error);
+      }
+    };
+
+    fetchAccessToken();
+  }, []);
+
+  useEffect(() => {
     if (roomId) {
       const fetchRoomLayout = async () => {
         try {
           const response = await axios.get(
             API_GetRoomLayout + showtimeId + "/seat-layout"
           );
-          console.log("Room Layout Data:", response.data);
           setRoomLayout(response.data.data);
-
-          // Update seat prices
           const { NORMAL, COUPLE } = response.data.data.prices;
           setSeatPrices({ NORMAL, COUPLE });
         } catch (error) {
@@ -90,95 +83,202 @@ export default function Theatre({ navigation }) {
     }
   }, [roomId]);
 
-  // const renderSeats = () => {
-  //   if (!roomLayout || !Array.isArray(roomLayout.rows)) {
-  //     return null;
-  //   }
+  const handleSeatSelection = (seat, nextSeat = null) => {
+    if (seat.booked) return;
 
-  //   return (
-  //     <View style={styles.seatContainer}>
-  //       {roomLayout.rows.map((row, rowIndex) => (
-  //         <View key={rowIndex} style={styles.rowContainer}>
-  //           <View style={styles.rowLabelContainer}>
-  //             <Text style={styles.rowLabel}>{row.name}</Text>
-  //           </View>
-  //           <View style={styles.seatRow}>
-  //             {row.seats.map((seat, seatIndex) => (
-  //               <View
-  //                 key={seatIndex}
-  //                 style={[
-  //                   styles.seatWrapper,
-  //                   seat.type === "COUPLE" && styles.coupleSeatWrapper,
-  //                 ]}
-  //               >
-  //                 <Pressable
-  //                   style={[
-  //                     styles.seat,
-  //                     seat.booked
-  //                       ? styles.bookedSeat // Ghế đã đặt sẽ hiển thị màu xám
-  //                       : seats.includes(seat.id)
-  //                       ? styles.selectedSeat // Ghế đã chọn
-  //                       : styles.availableSeat, // Ghế có sẵn
-  //                     seat.type === "COUPLE" && styles.coupleSeat,
-  //                     seats.includes(seat.id) && styles.selectedSeat,
-  //                   ]}
-  //                   onPress={() => {
-  //                     if (!seat.booked) { // Chỉ cho phép chọn ghế nếu ghế chưa được đặt
-  //                       // Toggle seat selection
-  //                       setSeats((prevSeats) => {
-  //                         if (prevSeats.includes(seat.id)) {
-  //                           return prevSeats.filter((id) => id !== seat.id);
-  //                         }
-  //                         return [...prevSeats, seat.id];
-  //                       });
-  //                     }
-  //                   }}
-  //                   disabled={seat.booked} // Vô hiệu hóa ghế đã được đặt
-  //                 >
-  //                   <Text style={styles.seatText}>{seat.name}</Text>
-  //                 </Pressable>
-  //               </View>
-  //             ))}
-  //           </View>
-  //           <View style={styles.rowLabelContainer}>
-  //             <Text style={styles.rowLabel}>{row.name}</Text>
-  //           </View>
-  //         </View>
-  //       ))}
-  //     </View>
-  //   );
-  // };
+    setSeats(prevSeats => {
+      const isSelected = prevSeats.includes(seat.id);
+      let newSeats;
+
+      if (seat.type === "COUPLE") {
+        if (isSelected) {
+          newSeats = prevSeats.filter(id => id !== seat.id && id !== nextSeat.id);
+        } else {
+          newSeats = [...prevSeats, seat.id, nextSeat.id];
+        }
+      } else {
+        if (isSelected) {
+          newSeats = prevSeats.filter(id => id !== seat.id);
+        } else {
+          newSeats = [...prevSeats, seat.id];
+        }
+      }
+
+      // Update selected seats data
+      const newSelectedSeatsData = newSeats.map(seatId => {
+        const selectedSeat = findSeatById(seatId);
+        const row = roomLayout.rows[selectedSeat.rowIndex];
+        return {
+          id: seatId,
+          name: `${row.name}${selectedSeat.name}`,
+          price: selectedSeat.price,
+          type: selectedSeat.type
+        };
+      });
+
+      setSelectedSeatsData(newSelectedSeatsData);
+      return newSeats;
+    });
+  };
+
+
+
+  const [finalAmount, setFinalAmount] = useState(null);
+const [showDiscountAlert, setShowDiscountAlert] = useState(false);
+const [orderData, setOrderData] = useState(null);
+
+const handleContinue = async () => {
+  if (seats.length === 0) {
+    Alert.alert("Thông báo", "Vui lòng chọn ghế trước khi tiếp tục");
+    return;
+  }
+
+  if (!accessToken) {
+    Alert.alert("Thông báo", "Vui lòng đăng nhập để đặt vé");
+    return;
+  }
+
+  // Nếu đã có orderData, nghĩa là API đã được gọi trước đó
+  if (orderData) {
+    navigation.navigate("SelectCombo", orderData);
+    return;
+  }
+
+  try {
+    const response = await axios.post(
+      API_CreateOrder,
+      {
+        showTimeId: showtimeId,
+        seatIds: seats,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const orderId = response.data.data.id;
+    await AsyncStorage.setItem("orderId", orderId.toString());
+
+    // Update finalAmount if there's a discount in the response
+    if (response.data.data.finalAmount) {
+      setFinalAmount(response.data.data.finalAmount);
+    }
+
+      // Tính toán các giá trị
+      const formattedSeats = selectedSeatsData.map(seat => seat.name).join(", ");
+      const originalTotal = selectedSeatsData.reduce((total, seat) => total + seat.price, 0);
+      const finalAmount = response.data.data.finalAmount;
+      const hasDiscount = finalAmount && finalAmount !== originalTotal;
+      
+      // Xác định total dựa trên việc có giảm giá hay không
+      const total = hasDiscount ? finalAmount : originalTotal;
+
+    const navigationData = {
+      seats: formattedSeats,
+      // total lấy giá trị của Tại sao lại lấy giá trị của currentTotal ở đây?total: currentTotal nó ra null cách khác để lấy giá trị của currentTotal ở đây là sao?
+      total: total,
+      originalTotal: originalTotal,
+      hasDiscount: hasDiscount,
+      name: route.params.movieTitle,
+      mall: route.params.cinemaName,
+      timeSelected: formattedStartTime,
+      tableSeats: route.params.roomName,
+      movie: route.params.movie,
+      movieImage: route.params.movieImage,
+      startTime: formattedStartTime,
+      ageRating: route.params.ageRating,
+      selectedDate: route.params.selectedDate,
+      showtimeId: showtimeId,
+      orderId: orderId,
+      rating: route.params.rating,
+      
+    };
+
+    console.log("ccurrentTotal:", currentTotal);
+    
+
+    setOrderData(navigationData);
+
+    // Nếu có giảm giá, hiển thị thông báo
+    if (hasDiscount) {
+      Alert.alert(
+        "Thông báo",
+        `Bạn đã được giảm giá ${(originalTotal - response.data.data.finalAmount).toLocaleString("vi-VN")} VND`,
+        [
+          {
+            text: "Tiếp tục",
+            onPress: () => setShowDiscountAlert(true)
+          }
+        ]
+      );
+    } else {
+      navigation.navigate("SelectCombo", navigationData);
+    }
+
+  } catch (error) {
+    console.error("Error creating order:", error);
+    Alert.alert(
+      "Lỗi",
+      "Không thể tạo đơn hàng. Vui lòng thử lại.",
+      [{ text: "OK" }]
+    );
+  }
+};
+
+// Lưu currentTotal vào state
+const [currentTotal, setCurrentTotal] = useState(null);
+
+const renderTotalAmount = () => {
+  const originalTotal = selectedSeatsData.reduce((total, seat) => total + seat.price, 0);
+  const hasDiscount = finalAmount !== null && finalAmount !== originalTotal;
+  const displayTotal = hasDiscount ? finalAmount : originalTotal;
+
+  return (
+    <View style={styles.totalAmount}>
+      {hasDiscount ? (
+        <>
+          <Text style={styles.originalPrice}>
+            {originalTotal.toLocaleString("vi-VN")} VND
+          </Text>
+          <Text style={styles.discountedPrice}>
+            {displayTotal.toLocaleString("vi-VN")} VND
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.normalPrice}>
+          {displayTotal.toLocaleString("vi-VN")} VND
+        </Text>
+      )}
+    </View>
+  );
+};
+
+
 
   const renderSeats = () => {
     if (!roomLayout || !Array.isArray(roomLayout.rows)) {
       return null;
     }
 
-    // Create a placeholder for rows
     const rows = Array(roomLayout.maxRow).fill(null);
     roomLayout.rows.forEach((row) => (rows[row.index] = row));
 
-    // Function to render a seat or empty space
     const renderSeat = (seat, index, array) => {
       if (!seat) {
-        // Render an empty spot if no seat is present
         return <View key={`empty-${index}`} style={styles.emptySeat} />;
       }
 
-      // Skip rendering if the price is null
       if (seat.price === null) {
         return null;
       }
 
       if (seat.type === "COUPLE") {
         const nextSeat = array[index + 1];
-
-        // Remove the next seat from array since it's part of the couple seat
         array.splice(index + 1, 1);
 
-        // Check if both couple seats are selected
-        const isSelected =
-          seats.includes(seat.id) && seats.includes(nextSeat?.id);
+        const isSelected = seats.includes(seat.id) && seats.includes(nextSeat?.id);
 
         return (
           <Pressable
@@ -187,18 +287,7 @@ export default function Theatre({ navigation }) {
               styles.coupleSeatContainer,
               isSelected ? styles.selectedSeat : styles.availableSeat,
             ]}
-            onPress={() => {
-              if (!seat.booked) {
-                setSeats((prevSeats) => {
-                  if (prevSeats.includes(seat.id)) {
-                    return prevSeats.filter(
-                      (id) => id !== seat.id && id !== nextSeat.id
-                    );
-                  }
-                  return [...prevSeats, seat.id, nextSeat.id];
-                });
-              }
-            }}
+            onPress={() => handleSeatSelection(seat, nextSeat)}
             disabled={seat.booked}
           >
             <Text style={[styles.seatText, isSelected && { color: "#ffffff" }]}>
@@ -212,7 +301,6 @@ export default function Theatre({ navigation }) {
       }
 
       const isSelected = seats.includes(seat.id);
-      // Render normal seat
       return (
         <Pressable
           key={seat.id}
@@ -220,20 +308,11 @@ export default function Theatre({ navigation }) {
             styles.seat,
             seat.booked
               ? styles.bookedSeat
-              : seats.includes(seat.id)
+              : isSelected
               ? styles.selectedSeat
               : styles.availableSeat,
           ]}
-          onPress={() => {
-            if (!seat.booked) {
-              setSeats((prevSeats) => {
-                if (prevSeats.includes(seat.id)) {
-                  return prevSeats.filter((id) => id !== seat.id);
-                }
-                return [...prevSeats, seat.id];
-              });
-            }
-          }}
+          onPress={() => handleSeatSelection(seat)}
           disabled={seat.booked}
         >
           <Text style={[styles.seatText, isSelected && { color: "#ffffff" }]}>
@@ -243,7 +322,6 @@ export default function Theatre({ navigation }) {
       );
     };
 
-    // Function to render a row of seats
     const renderRow = (row) => {
       const seats = Array(roomLayout.maxColumn).fill(null);
       row.seats.forEach((seat) => (seats[seat.columnIndex] = seat));
@@ -259,9 +337,7 @@ export default function Theatre({ navigation }) {
                 <View style={styles.rowLabelContainer}>
                   <Text style={styles.rowLabel}>{row.name}</Text>
                 </View>
-
                 <View style={styles.seatRow}>{renderRow(row)}</View>
-
                 <View style={styles.rowLabelContainer}>
                   <Text style={styles.rowLabel}>{row.name}</Text>
                 </View>
@@ -274,76 +350,6 @@ export default function Theatre({ navigation }) {
       </View>
     );
   };
-
-  const [accessToken, setAccessToken] = useState(null);
-  // Lấy accessToken từ AsyncStorage
-  useEffect(() => {
-    const fetchAccessToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem("accessToken");
-        setAccessToken(token || "No token found"); // Provide a fallback message
-        console.log("Fetched accessToken:", token);
-      } catch (error) {
-        console.error("Error retrieving accessToken:", error);
-      }
-    };
-
-    fetchAccessToken();
-  }, []);
-
-  console.log("Token:", accessToken);
-  console.log("Showtime ID:", showtimeId);
-
-  // Post selected seats to the API
-  const postSelectedSeats = async (selectedSeats) => {
-    try {
-      const response = await axios.post(
-        // "http://192.168.1.8:8080/api/v1/orders",
-        API_CreateOrder,
-        {
-          showTimeId: showtimeId,
-          seatIds: selectedSeats,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-      console.log("API response:", response.data);
-      // Hiển thị ra orderId từ response.data
-      const orderId = response.data.data.id;
-      console.log("Order ID:", orderId);
-      // Lưu orderId vào AsyncStorage
-      await AsyncStorage.setItem("orderId", orderId.toString());
-    } catch (error) {}
-  };
-
-  const getSelectedSeatsInfo = () => {
-    if (!roomLayout || !Array.isArray(roomLayout.rows)) {
-      return [];
-    }
-    const selectedSeats = seats
-      .map((seatId) => {
-        const seat = findSeatById(seatId);
-        if (seat) {
-          const row = roomLayout.rows[seat.rowIndex];
-          if (row) {
-            return `${row.name}${seat.name}`;
-          }
-        }
-        return null;
-      })
-      .filter(Boolean);
-
-    // Post the selected seats whenever the seats are selected
-    if (selectedSeats.length > 0) {
-      postSelectedSeats(seats); // Pass the seat IDs to the API
-    }
-
-    return selectedSeats;
-  };
-
 
   return (
     <KeyboardAvoidingView
@@ -365,7 +371,6 @@ export default function Theatre({ navigation }) {
         <Text style={styles.roomName}>{route.params.roomName}</Text>
         <Text style={styles.startTime}>{formattedStartTime}</Text>
 
-        {/* Scrollable area for seats */}
         <ScrollView contentContainerStyle={styles.seatLayoutContainer}>
           {renderSeats()}
         </ScrollView>
@@ -393,46 +398,27 @@ export default function Theatre({ navigation }) {
           </View>
         </View>
 
-        {/* Footer */}
         <View style={styles.totalContainer}>
           <View style={styles.totalContainerLeft}>
             <Text style={styles.endTime}>
               Thời gian kết thúc: {formattedEndTime}
             </Text>
             <Text style={styles.seatCount}>
-              Ghế: {getSelectedSeatsInfo().join(", ")}
+              Ghế: {selectedSeatsData.map(seat => seat.name).join(", ")}
             </Text>
           </View>
-          <View style={styles.totalAmount}>
+          {/* <View style={styles.totalAmount}>
             <Text>
               Tổng cộng: {calculateTotal().toLocaleString("vi-VN")} VND
             </Text>
-          </View>
+          </View> */}
+          {renderTotalAmount()}
         </View>
 
         <TouchableOpacity
-          onPress={() =>
-            navigation.navigate("SelectCombo", {
-              seats: getSelectedSeatsInfo(),
-              total: calculateTotal(),
-              name: route.params.movieTitle,
-              mall: route.params.cinemaName,
-              timeSelected: formattedStartTime,
-              tableSeats: route.params.roomName,
-              movie: route.params.movie,
-              // getSelectedSeats: getSelectedSeatsInfo().join(", "),
-              movieImage: route.params.movieImage,
-              startTime: formattedStartTime,
-              ageRating: route.params.ageRating,
-              selectedDate: route.params.selectedDate,
-              //showtimeId
-              showtimeId: route.params.showtimeId,
-              // orderId
-              orderId: route.params.orderId,
-              rating: route.params.rating,
-            })
-          }
+          onPress={handleContinue}
           style={styles.button}
+          disabled={seats.length === 0}
         >
           <Text style={styles.buttonText}>Tiếp tục</Text>
         </TouchableOpacity>
@@ -440,6 +426,7 @@ export default function Theatre({ navigation }) {
     </KeyboardAvoidingView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -628,4 +615,20 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 10,
   },
+  originalPrice: {
+    textDecorationLine: 'line-through',
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  discountedPrice: {
+    color: '#e51c23', // Màu đỏ cho giá đã giảm
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  normalPrice: {
+    fontSize: 16,
+    color: '#000',
+  },
+
 });

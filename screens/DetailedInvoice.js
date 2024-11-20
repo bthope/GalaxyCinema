@@ -109,7 +109,7 @@ const DetailedInvoice = ({navigation}) => {
 
         <View style={styles.contentSeact}>
             <Text style={styles.detailsSeat}>
-                Ghế: {seats.join(", ")}
+                Ghế: {seats}
             </Text>
         </View>
         {/* Seat and Ticket Info */}
