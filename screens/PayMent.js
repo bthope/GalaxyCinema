@@ -604,10 +604,10 @@ const handlePayment = async () => {
       </View>
       <Text style={styles.infoTextInfomation}>Phương thức thanh toán</Text>
       <View style={styles.contentPayMent}>
-        <View style={styles.contentTabPayMent}>
+        {/* <View style={styles.contentTabPayMent}>
           <View style={styles.contentTab2PayMent}>
             <Image source={require("../img/zalopay.png")} style={styles.logo} />
-            <Text style={styles.textPayMent}>Ví MoMo</Text>
+            <Text style={styles.textPayMent}>ZaloPay</Text>
           </View>
           <View>
             <RadioButton
@@ -615,7 +615,7 @@ const handlePayment = async () => {
               onPress={() => setSelectedPaymentMethod("ZaloPay")}
             />
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.contentTabPayMent}>
           <View style={styles.contentTab2PayMent}>
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 10,
-    top: 220,
+    top: 280,
     backgroundColor: "white",
     height: 80,
     left: -10,

@@ -117,10 +117,6 @@ const removeUserData = async () => {
       Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
     }
   };
-
-  
-
-
   return (
     <KeyboardAvoidingView
       contentContainerStyle={styles.contain}
@@ -175,7 +171,9 @@ const removeUserData = async () => {
               <Image source={require('../img/undo.png')} style={styles.imgUser} />
               <Text style={{ color: 'black', textAlign: 'center', marginTop: 5, width: 100 }}>Giao dịch</Text>
             </View>
-            <View style={styles.contentTT3}>
+            <View style={styles.contentTT3}
+              onStartShouldSetResponder={() => navigation.navigate('Notification')}
+            >
               <Image source={require('../img/bell.png')} style={styles.imgUser} />
               <Text style={{ color: 'black', textAlign: 'center', marginTop: 5, width: 100 }}>Thông báo</Text>
             </View>

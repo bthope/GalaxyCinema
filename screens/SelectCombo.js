@@ -80,7 +80,7 @@ export default function SelectCombo({ navigation }) {
   }, [accessToken]);
 
   // Hủy đơn hàng sau khi hết thời gian giữ ghế 6:00
-  const [timeLeft, setTimeLeft] = useState(360);
+  const [timeLeft, setTimeLeft] = useState(420);
 
   // Lấy giá trị thời gian đã lưu từ AsyncStorage khi vào màn hình
   const loadTimeLeft = async () => {

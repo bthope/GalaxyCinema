@@ -133,28 +133,26 @@ export default function TimeVenue({ route, navigation }) {
   }, []);
 
   // Hiển thị cinema với dữ liệu là city.name
-  const city = cinemas.map((cinema) => cinema.city.name);
+  const city = cinemas.map((cinema) => cinema.city);
   console.log("Thành phố:", city);
 
   // Hiển thị cinema với dữ liệu là address có tên name
   const address = cinemas.map((cinema) => cinema.name);
   console.log("Địa chỉ:", address);
 
-  // Lấy danh sách các thành phố duy nhất
-  const uniqueCities = [...new Set(cinemas.map((cinema) => cinema.city.name))];
-  console.log("Unique Cities:", uniqueCities);
-
   // Xử lý chọn tỉnh thành phố và hiển thị trên modal city
   const handleSelectCity = (index) => {
-    const cityName = uniqueCities[index]; // Lấy tên thành phố duy nhất
-    setSelectedCity(cityName); // Cập nhật thành phố đã chọn
+    const selectedCityName = [...new Set(city)][index];
+    setSelectedCity(selectedCityName);
+    setSelectedAddress(null); // Reset selected address when city changes
+    setSelectedProvinceIndex(index);
 
-    // Lọc địa chỉ thuộc thành phố đã chọn
-    const addressesForCity = cinemas.filter(
-      (cinema) => cinema.city.name === cityName
+    // Filter cinemas by selected city
+    const cityFilteredCinemas = cinemas.filter(
+      (cinema) => cinema.city === selectedCityName
     );
-    setFilteredAddresses(addressesForCity); // Cập nhật địa chỉ tương ứng
-    // setModalVisible(false); // Đóng modal thành phố
+    setFilteredAddresses(cityFilteredCinemas);
+    setModalVisible(false);
   };
 
   // Hiển thị movieId của movieDetails
@@ -169,8 +167,8 @@ export default function TimeVenue({ route, navigation }) {
   // const selectedDateFormatted = selectedDate.toISOString().split("T")[0];
   // console.log("Selected Date:", selectedDateFormatted);
 
-   // Tạo định dạng ngày cho API (yyyy-mm-dd)
-   const formatDateForAPI = (date) => {
+  // Tạo định dạng ngày cho API (yyyy-mm-dd)
+  const formatDateForAPI = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
@@ -186,39 +184,41 @@ export default function TimeVenue({ route, navigation }) {
   }, [selectedDate]);
 
   console.log("Ngày đã chọn:", selectedDateFormatted);
-  
 
   // Fetch API showtimes
   useEffect(() => {
     const fetchShowtimes = async () => {
-        if (movieDetails?.id) {
-            const movieId = movieDetails.id;
-            const date = selectedDateFormatted; // This should be the formatted selected date
-            const cinemaId = cinemaIdflim;
+      if (movieDetails?.id) {
+        const movieId = movieDetails.id;
+        const date = selectedDateFormatted; // This should be the formatted selected date
+        const cinemaId = cinemaIdflim;
 
-            try {
-                const response = await axios.get(
-                    API_GetShowtime + 
-                    `?movieId=${movieId}&date=${date}${cinemaId ? `&cinemaId=${cinemaId}` : ''}`
-                );
+        try {
+          const response = await axios.get(
+            API_GetShowtime +
+              `?movieId=${movieId}&date=${date}${
+                cinemaId ? `&cinemaId=${cinemaId}` : ""
+              }`
+          );
 
-                // Check if the data is returned successfully
-                if (response.data.data) {
-                    setShowtimes(response.data.data); // Save showtimes data
-                } else {
-                    console.warn("No showtimes available for the selected date and cinema.");
-                    setShowtimes([]); // Clear previous showtimes if no data
-                }
-            } catch (error) {
-                console.error("Error fetching showtimes:", error);
-            }
+          // Check if the data is returned successfully
+          if (response.data.data) {
+            setShowtimes(response.data.data); // Save showtimes data
+          } else {
+            console.warn(
+              "No showtimes available for the selected date and cinema."
+            );
+            setShowtimes([]); // Clear previous showtimes if no data
+          }
+        } catch (error) {
+          console.error("Error fetching showtimes:", error);
         }
+      }
     };
 
     // Call the function every time movieDetails, selectedDateFormatted, or cinemaIdflim change
     fetchShowtimes();
-}, [movieDetails, selectedDateFormatted, cinemaIdflim]);
-
+  }, [movieDetails, selectedDateFormatted, cinemaIdflim]);
 
   // Hiển thị showtimes
   console.log("Showtimes:", showtimes);
@@ -632,15 +632,12 @@ export default function TimeVenue({ route, navigation }) {
         <View style={styles.modalView}>
           <Text style={styles.modalTitle}>Chọn thành phố</Text>
           <FlatList
-            data={[...new Set(city)]} // Chỉ lấy các thành phố duy nhất
-            keyExtractor={(item) => item}
+            data={[...new Set(city)]} // Only unique cities
+            keyExtractor={(item, index) => `city-${index}`} // Unique key
             renderItem={({ item, index }) => (
               <TouchableOpacity
                 style={styles.provinceItem}
-                onPress={() => {
-                  handleSelectCity(index); // Cập nhật thành phố đã chọn
-                  setSelectedProvinceIndex(index); // Cập nhật index đã chọn để hiển thị radio button
-                }}
+                onPress={() => handleSelectCity(index)}
               >
                 <View style={styles.radioButton}>
                   {selectedProvinceIndex === index ? (
@@ -682,16 +679,14 @@ export default function TimeVenue({ route, navigation }) {
         <View style={styles.modalView}>
           <Text style={styles.modalTitle}>Chọn Rạp Phim</Text>
           <FlatList
-            data={cinemas.filter((cinema) => cinema.city.name === selectedCity)} // Lọc địa chỉ theo thành phố đã chọn
-            keyExtractor={(item) => item.name}
-            renderItem={(
-              { item, index } // Thêm index vào tham số destructuring
-            ) => (
+            data={filteredAddresses} // Use filtered addresses
+            keyExtractor={(item, index) => `cinema-${item.id}`} // Unique key using cinema ID
+            renderItem={({ item, index }) => (
               <TouchableOpacity
                 style={styles.provinceItem}
                 onPress={() => {
-                  setSelectedAddress(item.name); // Cập nhật địa chỉ đã chọn
-                  setSelectedProvinceIndex(index); // Cập nhật index đã chọn để hiển thị radio button
+                  setSelectedAddress(item.name);
+                  setSelectedProvinceIndex(index);
                 }}
               >
                 <View style={styles.radioButton}>
@@ -707,13 +702,13 @@ export default function TimeVenue({ route, navigation }) {
           />
           <View style={styles.modalButtons}>
             <TouchableOpacity
-              onPress={() => setModalAddressVisible(false)} // Đóng modal địa chỉ
+              onPress={() => setModalAddressVisible(false)}
               style={styles.modalButtonCloses}
             >
               <Text style={styles.modalButtonTexts}>Đóng</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={handleConfirm} // Gọi hàm xác nhận khi nhấn nút
+              onPress={handleConfirm}
               style={styles.modalButtonCloses}
             >
               <Text style={styles.modalButtonTexts}>Xác nhận</Text>

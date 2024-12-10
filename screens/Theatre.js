@@ -373,15 +373,15 @@ const renderTotalAmount = () => {
 
         <ScrollView contentContainerStyle={styles.seatLayoutContainer}>
           {renderSeats()}
-        </ScrollView>
 
-        <View style={styles.Screen}>
-          <Image
-            source={require("../img/hinhanhT.png")}
-            resizeMode="contain"
-            style={styles.ScreenImg}
-          />
-        </View>
+          <View style={styles.Screen}>
+            {/* Thanh màn hình */}
+            <Text style={styles.TextScreen}> 
+             Màn Hình
+            </Text>
+            <View style={styles.ThanhScreen}></View>
+          </View>
+        </ScrollView>
 
         <View style={styles.legend}>
           <View style={styles.legendItem}>
@@ -609,6 +609,7 @@ const styles = StyleSheet.create({
     top: -5,
     justifyContent: "center",
     alignItems: "center",
+    top: -10,
   },
   ScreenImg: {
     width: 710,
@@ -629,6 +630,18 @@ const styles = StyleSheet.create({
   normalPrice: {
     fontSize: 16,
     color: '#000',
+  },
+  ThanhScreen:{
+    width: 380,
+    height: 8,
+    backgroundColor: "gray",
+    borderRadius: 2,
+  },
+  TextScreen:{
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "gray",
+    marginBottom: 10,
   },
 
 });
