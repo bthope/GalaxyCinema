@@ -15,6 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 import { API_EditPassword } from "../api/Api";
+import { FontAwesome } from "react-native-vector-icons";
 
 export default function EditPassWord({ navigation }) {
   const [userData, setUserData] = useState();
@@ -23,6 +24,10 @@ export default function EditPassWord({ navigation }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   // State để lưu lỗi
   const [errors, setErrors] = useState({
     currentPassword: "",
@@ -142,7 +147,7 @@ export default function EditPassWord({ navigation }) {
 
       <View style={styles.content}>
         <View style={styles.info}>
-          <Text style={styles.textTitle}>GALAXY CINEMA</Text>
+          <Text style={styles.textTitle}>B&Q CINEMA</Text>
 
           {/* Ô input mật khẩu hiện tại */}
           <View style={styles.inputContainer}>
@@ -157,8 +162,18 @@ export default function EditPassWord({ navigation }) {
               value={currentPassword}
               onChangeText={setCurrentPassword}
               onBlur={() => handleBlur("currentPassword", currentPassword)}
-              secureTextEntry
+              secureTextEntry={!showCurrentPassword} // Ẩn/hiện mật khẩu
             />
+             <TouchableOpacity
+              style={{ position: "absolute", right: 10, top: 8 }}
+              onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+            >
+              <FontAwesome
+                name={showCurrentPassword ? "eye-slash" : "eye"}
+                size={24}
+                color="grey"
+              />
+            </TouchableOpacity>
           </View>
           {errors.currentPassword ? (
             <Text style={styles.errorText}>{errors.currentPassword}</Text>
@@ -177,8 +192,18 @@ export default function EditPassWord({ navigation }) {
               value={newPassword}
               onChangeText={setNewPassword}
               onBlur={() => handleBlur("newPassword", newPassword)}
-              secureTextEntry
+              secureTextEntry={!showNewPassword} // Ẩn/hiện mật khẩu
             />
+             <TouchableOpacity
+              style={{ position: "absolute", right: 10, top: 8 }}
+              onPress={() => setShowNewPassword(!showNewPassword)}
+            >
+              <FontAwesome
+                name={showNewPassword ? "eye-slash" : "eye"}
+                size={24}
+                color="grey"
+              />
+            </TouchableOpacity>
           </View>
           {errors.newPassword ? (
             <Text style={styles.errorText}>{errors.newPassword}</Text>
@@ -197,8 +222,18 @@ export default function EditPassWord({ navigation }) {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               onBlur={() => handleBlur("confirmPassword", confirmPassword)}
-              secureTextEntry
+              secureTextEntry={!showConfirmPassword} // Ẩn/hiện mật khẩu
             />
+            <TouchableOpacity
+              style={{ position: "absolute", right: 10, top: 8 }}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <FontAwesome
+                name={showConfirmPassword ? "eye-slash" : "eye"}
+                size={24}
+                color="grey"
+              />
+            </TouchableOpacity>
           </View>
           {errors.confirmPassword ? (
             <Text style={styles.errorText}>{errors.confirmPassword}</Text>
@@ -227,7 +262,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignSelf: "flex-start",
     justifyContent: "flex-start",
-    borderBottomWidth: 0.5,
     width: "100%",
     paddingHorizontal: 10,
     paddingVertical: 10,

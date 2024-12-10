@@ -11,7 +11,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import Barcode from "@kichiyaki/react-native-barcode-generator"; // Replace QRCode
+import Barcode from "@kichiyaki/react-native-barcode-generator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DetailedInvoice = ({ navigation }) => {
@@ -32,7 +32,8 @@ const DetailedInvoice = ({ navigation }) => {
     rating,
     finalAmount,
   } = route.params;
-  const [ticketCode, setTicketCode] = useState("");
+  
+  const [ticketCode, setTicketCode] = useState("DEFAULT000");
 
   useEffect(() => {
     const generateTicketCode = async () => {
@@ -51,9 +52,12 @@ const DetailedInvoice = ({ navigation }) => {
           newTicketNumber.toString()
         );
 
+        // Update ticketCode only if it's different from the default
         setTicketCode(formattedTicketCode);
       } catch (error) {
         console.error("Error generating ticket code:", error);
+        // Ensure we always have a fallback ticket code
+        setTicketCode(`DEFAULT${Date.now()}`);
       }
     };
 
@@ -134,6 +138,7 @@ const DetailedInvoice = ({ navigation }) => {
     </KeyboardAvoidingView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
